@@ -1,4 +1,4 @@
-# rxnc-ca - A Framework for Lattice and Cellular Automata Simulation
+# rxn-ca - A lattice model for simulating solid state reactions
 
 ## Debugging
 
