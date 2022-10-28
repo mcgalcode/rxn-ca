@@ -30,9 +30,21 @@ class AutomatonStore(MongoStore):
         else:
             return None
 
+    def list_available_sets(self, ):
+        result = self.query({
+            "output.job_type": JobTypes.SCORE_RXNS.value
+        }, {
+            "output.chem_sys": True,
+            "output.temperature": True
+        })
+        systems = []
+
+        for res in result:
+            systems.append((res["output"]["chem_sys"], res["output"]["temperature"]))
+        return systems
+
     def get_scored_rxns(self, chem_sys, temperature):
         chem_sys = format_chem_sys(chem_sys)
-        print(chem_sys, temperature)
         result = self.query_one({
             "output.job_type": JobTypes.SCORE_RXNS.value,
             "output.chem_sys": chem_sys,
