@@ -16,10 +16,6 @@ from ..schemas.enumerated_rxns_schema import EnumeratedRxnsModel
 class EnumerateRxnsMaker(Maker):
     """
     Downloads reaction given a chemical system to a filesystem store.
-
-
-    Args:
-        Maker (_type_): _description_
     """
 
     name: str = "Enumerate Rxns"
