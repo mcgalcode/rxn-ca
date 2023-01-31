@@ -112,8 +112,9 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
         fig.update_xaxes(range=[0, step_idxs[-1]], title="Simulation Step")
 
         for phase in self.all_phases():
-            ys = [analyzer.mole_fraction(step, phase) for step in steps]
-            traces.append((step_idxs, ys, phase))
+            if phase is not SolidPhaseSet.FREE_SPACE:
+                ys = [analyzer.mole_fraction(step, phase) for step in steps]
+                traces.append((step_idxs, ys, phase))
 
         filtered_traces = [t for t in traces if max(t[1]) > min_prevalence]
 

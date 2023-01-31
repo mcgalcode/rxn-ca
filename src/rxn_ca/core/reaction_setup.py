@@ -3,7 +3,7 @@ from typing import Dict, List
 from .solid_phase_set import SolidPhaseSet
 from pylattica.square_grid import DiscreteGridSetup, PseudoHexagonalNeighborhoodBuilder2D, PseudoHexagonalNeighborhoodBuilder3D
 from pylattica.models.growth import GrowthController
-from pylattica.core import Runner, SimulationState, PeriodicState
+from pylattica.core import Runner, SimulationState, Simulation
 
 class ReactionSetup(DiscreteGridSetup):
     """Sets up SimulationStates for running the reaction automaton.
@@ -42,7 +42,7 @@ class ReactionSetup(DiscreteGridSetup):
         
         runner = Runner(parallel=True)
         res = runner.run(periodic_state.state, controller, num_steps = size)
-        return PeriodicState(res.last_step, periodic_state.structure)
+        return Simulation(res.last_step, periodic_state.structure)
 
     def setup_random_sites(self,
         size: int,

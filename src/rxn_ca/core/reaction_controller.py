@@ -8,11 +8,14 @@ from pylattica.core.simulation_state import GENERAL, SITES, SimulationState
 from pylattica.square_grid.neighborhoods import MooreNbHoodBuilder, VonNeumannNbHood2DBuilder, VonNeumannNbHood3DBuilder
 from pylattica.core.basic_controller import BasicController
 
+from .normalizers import normalize
 from .solid_phase_set import SolidPhaseSet
 from .reaction_result import ReactionResult
 from ..reactions import ScoredReactionSet, ScoredReaction
 
 class ReactionController(BasicController):
+
+    is_async = True
 
     @classmethod
     def get_neighborhood_from_size(cls, size, nb_builder = VonNeumannNbHood2DBuilder):
@@ -67,7 +70,7 @@ class ReactionController(BasicController):
         nb_hood_builder = ReactionController.get_neighborhood_from_structure(structure)
 
         self.nb_graph = nb_hood_builder.get(structure)
-        self.nucleation_nb_graph = MooreNbHoodBuilder(1, dim=structure.dim).get(structure)
+        self.nucleation_nb_graph = MooreNbHoodBuilder(dim = structure.dim).get(structure)
         self.inertia = inertia
         self.free_species = free_species
         # proxy for partial pressures
@@ -101,12 +104,7 @@ class ReactionController(BasicController):
                 other_phase
             )
 
-            return {
-                GENERAL: {
-                    'rxn': str(chosen_rxn)
-                },
-                SITES: site_updates
-            }
+            return site_updates
 
 
     def immediate_neighbors(self, site_id: int, state: SimulationState):
@@ -118,7 +116,7 @@ class ReactionController(BasicController):
         return neighbor_phases
 
     def get_rxns_from_step(self, simulation_state, coords):
-        site_id = self.structure.site_at(coords)['id']
+        site_id = self.structure.site_at(coords)['_site_id']
         return self.rxns_at_site(site_id, simulation_state)
 
     def rxns_at_site(self, site_id: int, state: SimulationState):
@@ -142,21 +140,20 @@ class ReactionController(BasicController):
             })
 
         # Readd open species reactions later
-        # possible_reactions = {**rxns, **self.rxns_with_open_species(this_phase, neighbor_phases)}
+        possible_reactions = [*rxns, *self.rxns_with_open_species(this_phase, neighbor_phases)]
 
-        return rxns
+        return possible_reactions
 
     def rxns_with_open_species(self, this_phase, neighbor_phases):
-        rxns = {}
+        rxns = []
         for specie, dist in self.effective_open_distances.items():
             rxn, score = self.get_rxn_and_score([this_phase, specie], dist, neighbor_phases, this_phase)
-            if str(rxn) in rxns:
-                rxns[str(rxn)]['score'] += score
-            else:
-                rxns[str(rxn)] = {
-                    'reaction': rxn,
-                    'score': score
-                }
+            rxns.append({
+                'reaction': rxn,
+                'score': score,
+                'site_id': None,
+                'other_phase': None
+            })
 
         return rxns
 
@@ -180,8 +177,6 @@ class ReactionController(BasicController):
 
         chosen_idx = np.random.choice(choices, p=normalized)
 
-        # chosen_rxn: ScoredReaction = rxns[np.argmax(scores)]
-
         return rxns[chosen_idx], site_ids[chosen_idx], phases[chosen_idx]
 
     def get_updates_from_reaction(self,
@@ -198,14 +193,18 @@ class ReactionController(BasicController):
             other_site_id: {}
         }
 
+        if rxn is None:
+            return updates
+
         # The current site should be replaced if a randomly chosen reactant is the current species
         current_phase_replacement = self.get_phase_replacement_from_reaction(rxn, current_spec)
         if current_phase_replacement is not None:
             updates[current_site_id][DISCRETE_OCCUPANCY] = current_phase_replacement
         
-        other_phase_replacement = self.get_phase_replacement_from_reaction(rxn, other_spec)
-        if other_phase_replacement is not None:
-            updates[other_site_id][DISCRETE_OCCUPANCY] = other_phase_replacement
+        if other_site_id is not None:
+            other_phase_replacement = self.get_phase_replacement_from_reaction(rxn, other_spec)
+            if other_phase_replacement is not None:
+                updates[other_site_id][DISCRETE_OCCUPANCY] = other_phase_replacement
 
         return updates
     
@@ -238,11 +237,14 @@ class ReactionController(BasicController):
 
     def get_rxn_and_score(self, reactants, distance, neighbor_phases, replaced_phase):
 
-        possible_reaction = self.rxn_set.get_reaction(reactants)
+        if len(set(reactants)) == 1:
+            possible_reaction = None
+        else:
+            possible_reaction = self.rxn_set.get_reaction(reactants)
 
         if possible_reaction is not None:
             score = self.get_score_contribution(possible_reaction.competitiveness, distance)
-            score = self.adjust_score_for_nucleation(score, neighbor_phases, possible_reaction.products, possible_reaction.reactants)
+            score = self.adjust_score_for_nucleation(score, neighbor_phases, possible_reaction.products, possible_reaction.reactants, replaced_phase)
             return (possible_reaction, score)
         else:
             # Utilize the self reaction
@@ -251,26 +253,20 @@ class ReactionController(BasicController):
             return (rxn, score)
 
 
+    def adjust_score_for_nucleation(self, score, neighbors, products, reactants, current_phase):
+        new_score = score * 1
+        for neighbor in neighbors:
+            if neighbor in products:
+                new_score = new_score * 3
+        
+        return new_score
+
     # def adjust_score_for_nucleation(self, score, neighbors, products, reactants):
-    #     total_friendly_neighbors = len(neighbors)
-
-    #     for neighbor in neighbors:
-    #         if neighbor not in products:
-    #             score = score * 0.8
-    #         if neighbor not in reactants and neighbor not in products:
-    #             total_friendly_neighbors -= 1
-
-    #     if total_friendly_neighbors == 0:
-    #         return 0
+    #     # penalize a new phase not neighboring any products
+    #     if not any([n in products for n in neighbors]):
+    #         return score * 0.15
     #     else:
     #         return score
 
-    def adjust_score_for_nucleation(self, score, neighbors, products, reactants):
-        # penalize a new phase not neighboring any products
-        if not any([n in products for n in neighbors]):
-            return score * 0.15
-        else:
-            return score
-
     def get_score_contribution(self, weight, distance):
-        return weight * 5 / distance
+        return weight * 1 / distance ** 4

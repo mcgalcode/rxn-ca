@@ -57,13 +57,13 @@ class ScoredReactionSet():
         for r in reactions:
             self.add_rxn(r)
 
-        for phase in self.phases:
-            self_rxn = ScoredReaction.self_reaction(phase, strength = 0.1)
-            existing = self.get_reaction([phase])
-            if existing is not None and not existing.is_identity:
-                self.add_rxn(self_rxn)
-            elif existing is None:
-                self.add_rxn(self_rxn)
+        # for phase in self.phases:
+        #     self_rxn = ScoredReaction.self_reaction(phase, strength = 0.1)
+        #     existing = self.get_reaction([phase])
+        #     if existing is not None and not existing.is_identity:
+        #         self.add_rxn(self_rxn)
+        #     elif existing is None:
+        #         self.add_rxn(self_rxn)
 
         if volumes is not None:
             self.volumes = volumes

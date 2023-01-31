@@ -45,7 +45,7 @@ class ReactionStepAnalyzer(DiscreteStepAnalyzer):
             if p is not SolidPhaseSet.FREE_SPACE:
                 total_moles += self.moles_of(step, p)
 
-        return self.moles_of(step, phase) / total_moles
+        return self.moles_of(step, phase) 
 
     def molar_breakdown(self, step):
         mole_fractions = {}
@@ -85,7 +85,7 @@ class ReactionStepAnalyzer(DiscreteStepAnalyzer):
                     total += num_moles
 
         for el, am in elemental_amounts.items():
-            elemental_amounts[el] = am / total
+            elemental_amounts[el] = am
 
 
         return elemental_amounts
