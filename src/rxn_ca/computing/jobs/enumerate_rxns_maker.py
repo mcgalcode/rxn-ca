@@ -1,11 +1,7 @@
 from jobflow.core.maker import Maker
 from jobflow.core.job import job
 
-from pymatgen.ext.matproj import MPRester
-
 from rxn_network.enumerators.minimize import MinimizeGibbsEnumerator
-from rxn_network.entries.entry_set import GibbsEntrySet
-from rxn_network.reactions.reaction_set import ReactionSet
 from rxn_network.jobs.core import GetEntrySetMaker, ReactionEnumerationMaker
 
 from dataclasses import dataclass
@@ -25,14 +21,14 @@ class EnumerateRxnsMaker(Maker):
     def make(self,
              chem_sys: str,
              temp: int,
-             stability_cutoff: float,
+             stability_cutoff: float = 0.1,
              open_el: str = None,
              chempot: float = None,
              mp_api_key: str = None) -> EnumeratedRxnsModel:
 
         entry_set_maker = GetEntrySetMaker(
-            temperature=1000,
-            e_above_hull=0.1,
+            temperature=temp,
+            e_above_hull=stability_cutoff,
             MP_API_KEY=mp_api_key
         )
 

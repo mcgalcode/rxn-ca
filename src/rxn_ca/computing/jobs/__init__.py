@@ -3,3 +3,4 @@ from .run_automaton import RunRxnAutomatonMaker
 from .score_rxns_in_store import ScoreRxnsMaker
 from .enumerate_and_score_flow import enumerate_and_score_flow
 from .run_automaton_flow import run_automaton_flow
+from .enumerate_flow import enumerate_flow

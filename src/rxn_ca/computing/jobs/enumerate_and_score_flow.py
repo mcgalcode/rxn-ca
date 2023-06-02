@@ -5,12 +5,14 @@ from jobflow import Flow
 
 ENUMERATE_AND_SCORE_FLOW = "ENUMERATE_AND_SCORE_FLOW"
 
+# Defunct
 def enumerate_and_score_flow(chem_sys,
                              temp,
                              stability_cutoff=0.1,
                              open_element=None,
                              chempot=None,
     ):
+    raise "This method is deprecated! Use enumerate_flow instead"
     enumerate_maker = EnumerateRxnsMaker()
     score_maker = ScoreRxnsMaker()
     enumerate_job = enumerate_maker.make(

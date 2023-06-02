@@ -1,17 +1,12 @@
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-import numpy as np
-
-from pylattica.core import SimulationState, SimulationResult
-from pylattica.discrete import DiscreteStepAnalyzer, DiscreteResultAnalyzer
+from pylattica.discrete import DiscreteResultAnalyzer
 
 from ..core.solid_phase_set import SolidPhaseSet
 from ..core.reaction_result import ReactionResult
 from ..reactions.scored_reaction_set import ScoredReactionSet
 
 from .reaction_step_analyzer import ReactionStepAnalyzer
-
-
 
 
 class ReactionAnalyzer(DiscreteResultAnalyzer):
@@ -28,7 +23,7 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
             rxn_set (ScoredReactionSet):
         """
         self.rxn_set: ScoredReactionSet = result.rxn_set
-        self.step_analyzer = ReactionStepAnalyzer(result.rxn_set)
+        self.step_analyzer = ReactionStepAnalyzer(self.rxn_set.phases)
         super().__init__(result)
 
     def get_choices_at(self, step_no: int, top: int = None, exclude_ids = True) -> None:
@@ -74,16 +69,14 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
     def plot_elemental_amounts(self) -> None:
         fig = go.Figure()
         fig.update_layout(width=800, height=800, title="Elemental Amount vs time step")
-        fig.update_yaxes(range=[-0.05,1.05], title="Relative Prevalence")
+        fig.update_yaxes(title="Prevalence")
         fig.update_xaxes(title="Simulation Step")
 
-        analyzer = ReactionStepAnalyzer(self.rxn_set)
-
-        elements = list(analyzer.elemental_composition(self._result.first_step).keys())
+        elements = list(self.step_analyzer.elemental_composition(self._result.first_step).keys())
         traces = []
         
         step_idxs, steps = self._get_steps_to_plot()
-        amounts = [analyzer.elemental_composition(s) for s in steps]
+        amounts = [self.step_analyzer.elemental_composition(s) for s in steps]
         for el in elements:
             ys = [a.get(el, 0) for a in amounts]
             traces.append((step_idxs, ys, el))
@@ -103,17 +96,21 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
         """
 
         fig = go.Figure()
-        fig.update_layout(width=800, height=800, title="Phase Mole Fractions")
-        fig.update_yaxes(range=[-0.05,1.05], title="Mole Fraction")
+        fig.update_layout(width=800, height=800, title="Prevalence by Simulation Step")
+        fig.update_yaxes(title="Prevalence")
 
-        analyzer = ReactionStepAnalyzer(self.rxn_set)
         traces = []
         step_idxs, steps = self._get_steps_to_plot()
         fig.update_xaxes(range=[0, step_idxs[-1]], title="Simulation Step")
+        molar_breakdowns = [self.step_analyzer.molar_fractional_breakdown(step) for step in steps]
 
-        for phase in self.all_phases():
+        phases = set()
+        for bd in molar_breakdowns:
+            phases = phases.union(set(bd.keys()))
+            
+        for phase in phases:
             if phase is not SolidPhaseSet.FREE_SPACE:
-                ys = [analyzer.mole_fraction(step, phase) for step in steps]
+                ys = [mb.get(phase, 0) for mb in molar_breakdowns]
                 traces.append((step_idxs, ys, phase))
 
         filtered_traces = [t for t in traces if max(t[1]) > min_prevalence]
@@ -127,16 +124,14 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
         return self.all_mole_fractions_at(len(self._result))
 
     def all_mole_fractions_at(self, step):
-        analyzer = ReactionStepAnalyzer(self.rxn_set)
         fracs = {}
         for phase in self.all_phases():
-            fracs[phase] = analyzer.mole_fraction(self._result.get_step(step), phase)
+            fracs[phase] = self.step_analyzer.mole_fraction(self._result.get_step(step), phase)
 
         return fracs
 
     def mole_fraction_at(self, step, phase):
-        analyzer = DiscreteStepAnalyzer(self.phase_set)
-        return analyzer.cell_fraction(self.steps[step - 1], phase)
+        return self.step_analyzer.mole_fraction(self.steps[step - 1], phase)
 
     def as_dict(self):
         return {

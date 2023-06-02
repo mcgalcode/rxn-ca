@@ -66,15 +66,17 @@ class ScoredReaction:
         return cls(reactants, products, strength)
 
     @classmethod
-    def from_rxn_network(cls, score, original_rxn: BasicReaction) -> ScoredReaction:
-        react_dict = { comp.reduced_formula: round(-coeff, 3) for comp, coeff in original_rxn.reactant_coeffs.items() }
-        product_dict = { comp.reduced_formula: round(coeff, 3) for comp, coeff in original_rxn.product_coeffs.items() }
-        return ScoredReaction(react_dict, product_dict, score, original_rxn)
+    def from_rxn_network(cls, score, original_rxn: BasicReaction, volumes: typing.Dict) -> ScoredReaction:
+        react_dict = { comp.reduced_formula: round(-coeff * volumes.get(comp.reduced_formula), 2) for comp, coeff in original_rxn.reactant_coeffs.items() }
+        product_dict = { comp.reduced_formula: round(coeff * volumes.get(comp.reduced_formula), 2) for comp, coeff in original_rxn.product_coeffs.items() }
+        return ScoredReaction(react_dict, product_dict, score)
 
-    def __init__(self, reactants, products, competitiveness, original_rxn = None):
+    def __init__(self, reactants, products, competitiveness):
         """Instantiate a reaction object by providing stoichiometry maps describing the
         reactant and product stoichiometry, and the relative competitiveness of this
         reaction.
+
+        NOTE: Stoichiometry should be provided in terms of _volume_ for the purpose of this model.
 
         Args:
             reactants (typing.Dict[str, Number]): A map representing the stoichiometry of the
@@ -84,15 +86,20 @@ class ScoredReaction:
         """
         self._reactants: typing.Dict[str, Number] = reactants
         self._products: typing.Dict[str, Number] = products
-        self._total_reactant_stoich = sum(reactants.values())
-        self._total_product_stoich = sum(reactants.values())
+
+        self.reactants = frozenset(self._reactants.keys())
+        self.products = frozenset(self._products.keys())
+        self.is_identity = self.reactants == self.products
+
+        self.total_reactant_stoich = sum(reactants.values())
+        self.total_product_stoich = sum(products.values())
+        self.product_reactant_stoich_ratio = self.total_product_stoich / self.total_reactant_stoich
         self.competitiveness: Number = competitiveness
-        self.original_rxn = original_rxn
         self._as_str = f"{stoich_map_to_str(self._reactants)}->{stoich_map_to_str(self._products)}"
 
     def rescore(self, scorer) -> ScoredReaction:
         new_score = scorer.score(self)
-        return ScoredReaction(self._reactants, self._products, new_score, self.original_rxn)
+        return ScoredReaction(self._reactants, self._products, new_score)
 
     def can_proceed_with(self, reactants: list[str]) -> bool:
         """Helper method that, given a list of reactants, returns true if it is the same
@@ -104,7 +111,7 @@ class ScoredReaction:
         Returns:
             bool: True if the reactants match, otherwise False
         """
-        return set(reactants) == set(self.reactants)
+        return set(reactants) == self.reactants
 
     def reactant_str(self) -> str:
         """Returns a string representing the reactant side of this reaction. For instance,
@@ -115,25 +122,9 @@ class ScoredReaction:
         """
         return phases_to_str(self.reactants)
 
-    def is_identity(self) -> bool:
-        """Indicates whether or not this reaction is an identity reaction
-
-        Returns:
-            bool:
-        """
-        return set(self.reactants) == set(self.products)
-
-    @property
-    def reactants(self):
-        return list(self._reactants.keys())
-
-    @property
-    def products(self):
-        return list(self._products.keys())
-
     @property
     def all_phases(self):
-        return list(set(self.reactants + self.products))
+        return list(self.reactants + self.products)
 
     def stoich_ratio(self, phase1, phase2) -> Number:
         all_phases = {**self._reactants, **self._products}
@@ -170,19 +161,13 @@ class ScoredReaction:
         Returns:
             Number:
         """
-        return self._reactants[phase] / self._total_reactant_stoich
+        try:
+            return self._reactants[phase] / self.total_reactant_stoich
+        except:
+            print(phase, str(self))
 
     def any_reactants(self, phases):
-        return len(set(self.reactants).intersection(phases)) > 0
-
-    @property
-    def is_identity(self) -> bool:
-        """Indicates whether or not this reaction is an identity reaction
-
-        Returns:
-            bool:
-        """
-        return set(self.reactants) == set(self.products)
+        return len(self.reactants.intersection(phases)) > 0
 
     def __str__(self):
         return self._as_str

@@ -3,27 +3,30 @@ from pymatgen.core.composition import Composition
 
 from pylattica.core import SimulationState
 from pylattica.discrete import DiscreteStepAnalyzer
+from pylattica.discrete.state_constants import DISCRETE_OCCUPANCY
 
-from ..core.solid_phase_set import SolidPhaseSet
-from ..reactions.scored_reaction_set import ScoredReactionSet
+from ..core import SolidPhaseSet
+from ..core.reaction_setup import VOLUME
 
 
 class ReactionStepAnalyzer(DiscreteStepAnalyzer):
 
-    def __init__(self, reaction_set: ScoredReactionSet) -> None:
+    def __init__(self, phase_set: SolidPhaseSet) -> None:
         super().__init__()
-        self.rxn_set: ScoredReactionSet = reaction_set
+        self.phase_set: SolidPhaseSet = phase_set
 
     def summary(self, step, phases = None):
         if phases is None:
             phases = self.phases_present(step)
+        
+        moles = self.molar_fractional_breakdown(step)
 
         for p in phases:
-            print(f'{p} moles: ', self.cell_count(step, p))
+            print(f'{p} moles: ', moles[p])
 
-        denom = min([self.cell_count(step, p) for p in phases])
+        denom = min([moles[p] for p in phases])
         for p in phases:
-            print(f'mole ratio of {p}: ', self.cell_count(step, p) / denom)
+            print(f'mole ratio of {p}: ', moles[p] / denom)
 
         for el, amt in self.elemental_composition(step).items():
             print(f'{el} moles: ', amt)
@@ -39,50 +42,58 @@ class ReactionStepAnalyzer(DiscreteStepAnalyzer):
                 rxns[rxn_str] = 0
         return rxns
 
-    def mole_fraction(self, step, phase):
-        total_moles = 0
-        for p in self.phases_present(step):
-            if p is not SolidPhaseSet.FREE_SPACE:
-                total_moles += self.moles_of(step, p)
+    def phase_volumes(self, step: SimulationState):
+        phase_amts = {}
+        for site in step.all_site_states():
+            phase = site[DISCRETE_OCCUPANCY]
+            if phase is not SolidPhaseSet.FREE_SPACE:
+                vol = site[VOLUME]
+                if phase in phase_amts:
+                    phase_amts[phase] += vol
+                else:
+                    phase_amts[phase] = vol
+        
+        return phase_amts
+    
+    def total_volume(self, step: SimulationState):
+        return sum(self.phase_volumes(step).values())
 
-        return self.moles_of(step, phase) 
+    def phase_volume_fractions(self, step: SimulationState):
+        total = self.total_volume(step)
+        ratios = { phase: vol_abs / total for phase, vol_abs in self.phase_volumes(step).items()}
+        return ratios
 
     def molar_breakdown(self, step):
-        mole_fractions = {}
-        for phase in self.phases_present(step):
-            mole_fractions[phase] = self.mole_fraction(step, phase)
-        return mole_fractions
+        phase_moles = {}
+        for phase, vol in self.phase_volumes(step).items():
+            if phase != SolidPhaseSet.FREE_SPACE:
+                moles = vol / self.phase_set.volumes[phase]
+                phase_moles[phase] = moles
 
-    def normalized_molar_breakdown(self, step):
-        moles = self.molar_breakdown(step)
-        min_moles = 1
-        min_phase = None
-        for phase, mole_count in moles.items():
-            if mole_count <= min_moles:
-                min_phase = phase
-                min_moles = mole_count
+        return phase_moles
 
-        return { phase: mole_count / min_moles for phase, mole_count in moles.items() }
-
-
-    def moles_of(self, step, phase):
-        return float(self.cell_count(step, phase) / self.rxn_set.volumes[phase])
+    def molar_fractional_breakdown(self, step):
+        phase_moles = self.molar_breakdown(step)
+        frac_moles = {}
+        total = sum(phase_moles.values())
+        for phase, amt in phase_moles.items():
+            frac_moles[phase] = amt / total
+        
+        return frac_moles
 
     def elemental_composition(self, step):
-        phases = self.phases_present(step)
+        molar_breakdown = self.molar_breakdown(step)
         elemental_amounts = {}
         total = 0
-        for p in phases:
-            if p is not SolidPhaseSet.FREE_SPACE:
-                comp = Composition(p)
-                moles = self.moles_of(step, p)
-                for el, am in comp.as_dict().items():
-                    num_moles = moles * am
-                    if el in elemental_amounts:
-                        elemental_amounts[el] += num_moles
-                    else:
-                        elemental_amounts[el] = num_moles
-                    total += num_moles
+        for phase, moles in molar_breakdown.items():
+            comp = Composition(phase)
+            for el, am in comp.as_dict().items():
+                num_moles = moles * am
+                if el in elemental_amounts:
+                    elemental_amounts[el] += num_moles
+                else:
+                    elemental_amounts[el] = num_moles
+                total += num_moles
 
         for el, am in elemental_amounts.items():
             elemental_amounts[el] = am
