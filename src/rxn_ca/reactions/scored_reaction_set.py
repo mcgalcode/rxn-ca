@@ -44,10 +44,10 @@ class ScoredReactionSet():
         for phase in self.phases.phases:
             if phase is not SolidPhaseSet.FREE_SPACE:
                 self_rxn = ScoredReaction.self_reaction(phase, strength = 0.1)
-                existing = self.get_reaction([phase])
-                if existing is not None and not existing.is_identity:
+                existing = self.get_reactions([phase])
+                if len(existing) > 0 and not any(map(lambda rxn: rxn.is_identity, existing)):
                     self.add_rxn(self_rxn)
-                elif existing is None:
+                elif len(existing) == 0:
                     self.add_rxn(self_rxn)
 
     def rescore(self, scorer):
@@ -56,11 +56,16 @@ class ScoredReactionSet():
         return ScoredReactionSet(rescored, skip_vols)
 
     def add_rxn(self, rxn: ScoredReaction) -> None:
-        self.reactant_map[frozenset(rxn.reactants)] = rxn
+        reactant_set = frozenset(rxn.reactants)
+        if self.reactant_map.get(reactant_set) is None:
+            self.reactant_map[reactant_set] = [rxn]
+        else:
+            self.reactant_map[reactant_set].append(rxn)
+            self.reactant_map[reactant_set] = sorted(self.reactant_map[reactant_set], key = lambda rxn: rxn.competitiveness, reverse = True)
         self.rxn_map[str(rxn)] = rxn
         self.reactions.append(rxn)
 
-    def get_reaction(self, reactants: list[str]) -> ScoredReaction:
+    def get_reactions(self, reactants: list[str]) -> ScoredReaction:
         """Given a list of string reaction names, returns a reaction that uses exactly those
         reactants as precursors.
 
@@ -70,7 +75,7 @@ class ScoredReactionSet():
         Returns:
             Reaction: The matching reaction, if it exists, otherwise None.
         """
-        return self.reactant_map.get(frozenset(reactants), None)
+        return self.reactant_map.get(frozenset(reactants), [])
 
     def get_rxn_by_str(self, rxn_str: str) -> ScoredReaction:
         """Retrieves a reaction from this set by it's serialized string form
