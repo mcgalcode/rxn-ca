@@ -11,6 +11,8 @@ from ..reactions import ScoredReactionSet, ArrheniusScore
 from ..computing import AutomatonStore, enumerate_flow
 from jobflow.managers.local import run_locally
 
+import typing
+
 def setup(rxns: ScoredReactionSet, phases: Dict, size: int, num_particles: int, dim: int = 2):
     phase_names = []
     phase_amts = []
@@ -40,7 +42,20 @@ def get_arrhenius_rxns(chemsys, temp, **kwargs):
     rxns = store.get_scored_rxns(chemsys, temp, scorer, **kwargs)
     return rxns
 
-def enumerate_rxns(chemsys, temp, cutoff):
+def enumerate_rxns(chem_sys,
+                   temp = 300,
+                   stability_cutoff=0.1,
+                   open_element=None,
+                   chempot=None,
+                   formulas_to_include: typing.List = []
+    ):
     store = AutomatonStore()
-    flow = enumerate_flow(chemsys, temp, cutoff)
+    flow = enumerate_flow(
+        chem_sys,
+        temp,
+        stability_cutoff=stability_cutoff,
+        open_element=open_element,
+        chempot=chempot,
+        formulas_to_include=formulas_to_include
+    )
     run_locally(flow, store=store.store)    

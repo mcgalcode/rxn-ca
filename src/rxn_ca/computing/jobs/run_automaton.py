@@ -14,8 +14,6 @@ from ...core.reaction_result import ReactionResult
 from ...core import SolidPhaseSet, ReactionSetup, ReactionController
 from ...reactions import ScoredReactionSet
 
-from .enumerate_and_score_flow import enumerate_and_score_flow
-
 from uuid import uuid4
 
 
@@ -60,28 +58,6 @@ class RunRxnAutomatonMaker(Maker):
 
             if scored_rxn_set is None:
                 scored_rxn_set = store.get_scored_rxns(chem_sys, temperature=temp)
-
-            if scored_rxn_set is None:
-                get_rxns_flow = enumerate_and_score_flow(
-                    chem_sys,
-                    temp
-                )
-                new_ca_job = RunRxnAutomatonMaker().make(
-                    chem_sys = chem_sys,
-                    temp = temp,
-                    setup_style = setup_style,
-                    setup_args = setup_args,
-                    num_steps = num_steps,
-                    scored_rxns = get_rxns_flow.output,
-                    dimensionality = dimensionality,
-                    inertia = inertia,
-                    open_species = open_species,
-                    free_species = free_species,
-                    parallel = parallel,
-                )
-
-                new_flow = Flow([get_rxns_flow, new_ca_job])
-                return Response(replace=new_flow, output=new_ca_job.output)
 
         assert scored_rxn_set is not None, "ScoredRxnSet not found!"
         phase_map: SolidPhaseSet = SolidPhaseSet(scored_rxn_set.phases)

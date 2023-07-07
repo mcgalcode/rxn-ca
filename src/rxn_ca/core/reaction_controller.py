@@ -23,6 +23,15 @@ DEFAULT_GASES = [
     "N2"
 ]
 
+def choose_from_list(choices, scores):
+    scores: np.array = np.array(scores)
+    normalized: np.array = normalize(scores)
+    idxs: np.array = np.array(range(0,len(choices)))
+
+    chosen_idx = np.random.choice(idxs, p=normalized)
+
+    return choices[chosen_idx]    
+
 class ReactionController(BasicController):
 
     @classmethod
@@ -113,18 +122,21 @@ class ReactionController(BasicController):
         else:
             possible_reactions = self.rxns_at_site(site_id, prev_state)
             chosen_rxn = self.choose_reaction(possible_reactions)
-            rxn: ScoredReaction = chosen_rxn["reaction"]
-            if rxn.is_identity:
+            rxns: List[ScoredReaction] = chosen_rxn["reactions"]
+            if rxns[0].is_identity:
                 return {}
+            
+            rxn = choose_from_list(rxns, [rxn.competitiveness for rxn in rxns])
+            
 
             site_updates = {
                 site_id: self.get_cell_updates(center_site_state, rxn),
             }
             
-            if not chosen_rxn['open_el']:
-                other_state = chosen_rxn['other_site_state']
-                other_site_id = other_state["_site_id"]
-                site_updates[other_site_id] = self.get_cell_updates(other_state, rxn)
+            # if not chosen_rxn['open_el']:
+            #     other_state = chosen_rxn['other_site_state']
+            #     other_site_id = other_state["_site_id"]
+            #     site_updates[other_site_id] = self.get_cell_updates(other_state, rxn)
 
             return site_updates
 
@@ -145,56 +157,49 @@ class ReactionController(BasicController):
         curr_state = state.get_site_state(site_id)
         this_phase = curr_state[DISCRETE_OCCUPANCY]
 
-        neighbor_phases = self.immediate_neighbors(site_id, state)
+        # neighbor_phases = self.immediate_neighbors(site_id, state)
 
         # Look through neighborhood, enumerate possible reactions
-        rxns = []
+        rxn_choices = []
 
         for nb_id, distance in self.nb_graph.neighbors_of(site_id, include_weights=True):
 
             site_state = state.get_site_state(nb_id)
             neighbor_phase = site_state[DISCRETE_OCCUPANCY]
-            rxn, score = self.get_rxn_and_score([neighbor_phase, this_phase], distance, neighbor_phases, this_phase)
-            rxns.append({
+            rxns, score = self.get_rxn_and_score([neighbor_phase, this_phase], distance, None, this_phase)
+            rxn_choices.append({
                 'other_site_state': site_state,
-                'reaction': rxn,
-                'score': score,
+                'reactions': rxns,
+                'best_score': score,
                 'other_phase': neighbor_phase,
                 'open_el': False
             })
 
         # Readd open species reactions later
-        possible_reactions = [*rxns, *self.rxns_with_open_species(this_phase, neighbor_phases)]
+        possible_reactions = [*rxn_choices, *self.rxns_with_open_species(this_phase, None)]
 
         return possible_reactions
 
     def rxns_with_open_species(self, this_phase, neighbor_phases):
-        rxns = []
+        rxn_choices = []
         for specie, dist in self.effective_open_distances.items():
             rxn, score = self.get_rxn_and_score([this_phase, specie], dist, neighbor_phases, this_phase)
-            rxns.append({
+            rxn_choices.append({
                 'reaction': rxn,
-                'score': score,
+                'best_score': score,
                 'other_site_state': None,
                 'other_phase': None,
                 'open_el': True
             })
 
-        return rxns
+        return rxn_choices
 
     def choose_reaction(self, rxns_and_scores: List[Dict]) -> Tuple[ScoredReaction, int, str]:
         scores: list[float] = [
-            rxn['score'] for rxn in rxns_and_scores
+            rxn['best_score'] for rxn in rxns_and_scores
         ]
-
-        scores: np.array = np.array(scores)
-        normalized: np.array = normalize(scores)
-        choices: np.array = np.array(range(0,len(rxns_and_scores)))
-
-        chosen_idx = np.random.choice(choices, p=normalized)
-
-        return rxns_and_scores[chosen_idx]
-
+        return choose_from_list(rxns_and_scores, scores)
+    
     def get_cell_updates(self, cell_state, reaction: ScoredReaction):
         updates = {}
         
@@ -231,34 +236,23 @@ class ReactionController(BasicController):
 
     def get_rxn_and_score(self, reactants, distance, neighbor_phases, replaced_phase):
 
-        possible_reaction = self.rxn_set.get_reaction(reactants)
-        if possible_reaction is not None:
-            score = self.get_score_contribution(possible_reaction.competitiveness, distance)
-            if len(possible_reaction.reactants) > 1:
-                score = self.adjust_score_for_nucleation(score, neighbor_phases, possible_reaction.products, possible_reaction.reactants, replaced_phase)
-            return (possible_reaction, score)
+        possible_reactions = self.rxn_set.get_reactions(reactants)
+        if len(possible_reactions) > 0:
+            # This magic number 0 is because the reactions are ordered by score highest to lowest
+            # as returned by the ScoredReactionSet::get_reaction method
+            score = self.get_score_contribution(possible_reactions[0].competitiveness, distance)
+            # if len(possible_reactions.reactants) > 1:
+            #     score = self.adjust_score_for_nucleation(score, neighbor_phases, possible_reactions.products, possible_reactions.reactants, replaced_phase)
+            return (possible_reactions, score)
         else:
             # Utilize the self reaction
-            rxn = self.rxn_set.get_reaction([replaced_phase])
+            rxns = self.rxn_set.get_reactions([replaced_phase])
             score = self.get_score_contribution(self.inertia, distance)
-            return (rxn, score)
+            return (rxns, score)
 
 
     def adjust_score_for_nucleation(self, score, neighbors, products, reactants, current_phase):
         return score
-        # new_score = score * 1
-        # for neighbor in neighbors:
-        #     if neighbor in products:
-        #         new_score = new_score * 3
-        
-        # return new_score
-
-    # def adjust_score_for_nucleation(self, score, neighbors, products, reactants):
-    #     # penalize a new phase not neighboring any products
-    #     if not any([n in products for n in neighbors]):
-    #         return score * 0.15
-    #     else:
-    #         return score
 
     def get_score_contribution(self, weight, distance):
         return weight * 1 / distance ** 3
