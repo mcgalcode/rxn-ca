@@ -4,8 +4,8 @@ import random
 
 from .solid_phase_set import SolidPhaseSet
 from ..analysis.reaction_step_analyzer import ReactionStepAnalyzer
+from .constants import VOLUME
 from pylattica.square_grid import DiscreteGridSetup, PseudoHexagonalNeighborhoodBuilder2D, PseudoHexagonalNeighborhoodBuilder3D, GrowthSetup
-from pylattica.models.growth import GrowthController
 from pylattica.core import Runner, SimulationState, Simulation
 from pylattica.core import BasicController
 from pylattica.core.neighborhood_builders import NeighborhoodBuilder
@@ -14,8 +14,6 @@ from pylattica.core.simulation_state import SimulationState
 from pylattica.discrete import PhaseSet
 from pylattica.discrete.state_constants import DISCRETE_OCCUPANCY, VACANT
 from pylattica.square_grid.neighborhoods import MooreNbHoodBuilder
-
-VOLUME = "VOLUME"
 
 default_ratios = [1, 1, 1]
 
