@@ -5,7 +5,9 @@ from rxn_network.reactions.reaction_set import ReactionSet
 from ..reactions.reaction_library import ReactionLibrary
 from ..reactions.scorers import score_rxns_many_temps
 
-class HeatingStep():
+from monty.json import MSONable
+
+class HeatingStep(MSONable):
     """Captures the information about a single step during a heating schedule.
     """
 
@@ -13,7 +15,10 @@ class HeatingStep():
         self.duration = duration
         self.temp = temp
 
-class HeatingSchedule():
+    def as_dict(self):
+        return (self.duration, self.temp)
+
+class HeatingSchedule(MSONable):
     """Captures the information of a heating schedule, e.g. ramping up
     to a particular temperature, holding, and then cooling back down
     """
@@ -46,3 +51,6 @@ class HeatingSchedule():
         """
         temps = [s.temp for s in self.steps]
         return score_rxns_many_temps(rxns, temps)
+    
+    def as_dict(self):
+        return [step.as_dict() for step in self.steps]

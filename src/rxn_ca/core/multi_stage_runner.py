@@ -12,7 +12,7 @@ from .constants import TEMPERATURE
 from typing import List, Dict
 
 
-def run(simulation: Simulation, reaction_lib: ReactionLibrary, heating_schedule: HeatingSchedule, free_species=None, verbose=True, inertia=0):
+def run_multi(simulation: Simulation, reaction_lib: ReactionLibrary, heating_schedule: HeatingSchedule, free_species=None, verbose=True, inertia=0):
     runner = Runner(is_async=True)
     print(f'Running simulation with inertia {inertia}')
 

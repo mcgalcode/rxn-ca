@@ -6,7 +6,7 @@ from pylattica.core import Runner
 
 from dataclasses import dataclass
 
-from ..schemas.ca_result_schema import RxnCAResultModel
+from ..schemas.ca_result_schema import RxnCAResultDoc
 from ..schemas.scored_rxns_schema import ScoredRxnsModel
 from ..utils.automaton_store import AutomatonStore
 from ...core.reaction_result import ReactionResult
@@ -84,7 +84,7 @@ class RunRxnAutomatonMaker(Maker):
         runner = Runner(parallel=parallel)
         result: ReactionResult = runner.run(initial_state, controller, num_steps)
 
-        return RxnCAResultModel(
+        return RxnCAResultDoc(
             task_id=str(uuid4()),
             chem_sys=chem_sys,
             temperature=temp,
