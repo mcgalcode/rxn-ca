@@ -118,7 +118,7 @@ class ScoredReactionSet():
     def as_dict(self):
         return {
             "reactions": [r.as_dict() for r in self.reactions],
-            "phases": self.phases,
+            "phases": self.phases.as_dict(),
             "@module": self.__class__.__module__,
             "@class": self.__class__.__name__,
         }

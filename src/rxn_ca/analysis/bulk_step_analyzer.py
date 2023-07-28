@@ -8,75 +8,66 @@ from pylattica.discrete.state_constants import DISCRETE_OCCUPANCY
 from ..core.solid_phase_set import SolidPhaseSet
 from ..core.constants import VOLUME
 
+from typing import List
 
-class ReactionStepAnalyzer(DiscreteStepAnalyzer):
+class BulkReactionStepAnalyzer(DiscreteStepAnalyzer):
 
     def __init__(self, phase_set: SolidPhaseSet) -> None:
         super().__init__()
         self.phase_set: SolidPhaseSet = phase_set
 
-    def summary(self, step, phases = None):
+    def summary(self, step_group, phases = None):
         if phases is None:
-            phases = self.phases_present(step)
+            phases = self.phases_present(step_group)
         
-        moles = self.molar_breakdown(step)
-        vol = self.phase_volumes(step)
+        moles = self.molar_breakdown(step_group)
+        vol = self.phase_volumes(step_group)
 
         for p in phases:
             print(f'{p} moles: ', moles[p])
             print(f'{p} vol: {vol[p]}')
-            print(f'{p} cells: {self.cell_count(step, p)}\n')
 
         denom = min([moles[p] for p in phases])
         for p in phases:
             print(f'mole ratio of {p}: ', moles[p] / denom)
 
-        for el, amt in self.elemental_composition(step).items():
+        for el, amt in self.elemental_composition(step_group).items():
             print(f'{el} moles: ', amt)
 
-    def get_reaction_choices(self, step: SimulationState):
-        rxns = {}
-        for site in step.all_site_states():
-            rxn = site['rxn']
-            rxn_str = str(rxn)
-            if rxn_str in rxns:
-                rxns[rxn_str] += 1
-            else:
-                rxns[rxn_str] = 0
-        return rxns
 
-    def phase_volumes(self, step: SimulationState):
+    def phase_volumes(self, step_group: List[SimulationState]):
         phase_amts = {}
-        for site in step.all_site_states():
-            phase = site[DISCRETE_OCCUPANCY]
-            if phase is not SolidPhaseSet.FREE_SPACE:
-                vol = site[VOLUME]
-                if phase in phase_amts:
-                    phase_amts[phase] += vol
-                else:
-                    phase_amts[phase] = vol
+        for step in step_group:
+            for site in step.all_site_states():
+                phase = site[DISCRETE_OCCUPANCY]
+                if phase is not SolidPhaseSet.FREE_SPACE:
+                    vol = site[VOLUME]
+                    if phase in phase_amts:
+                        phase_amts[phase] += vol
+                    else:
+                        phase_amts[phase] = vol
         
         return phase_amts
     
     def total_volume(self, step: SimulationState):
         return sum(self.phase_volumes(step).values())
 
-    def phase_volume_fractions(self, step: SimulationState):
-        total = self.total_volume(step)
-        ratios = { phase: vol_abs / total for phase, vol_abs in self.phase_volumes(step).items()}
+    def phase_volume_fractions(self, step_group: List[SimulationState]):
+        total = self.total_volume(step_group[0])
+        ratios = { phase: vol_abs / total for phase, vol_abs in self.phase_volumes(step_group).items()}
         return ratios
 
-    def molar_breakdown(self, step):
+    def molar_breakdown(self, step_group: List[SimulationState]):
         phase_moles = {}
-        for phase, vol in self.phase_volumes(step).items():
+        for phase, vol in self.phase_volumes(step_group).items():
             if phase != SolidPhaseSet.FREE_SPACE:
                 moles = vol / self.phase_set.volumes[phase]
                 phase_moles[phase] = moles
 
         return phase_moles
 
-    def molar_fractional_breakdown(self, step):
-        phase_moles = self.molar_breakdown(step)
+    def molar_fractional_breakdown(self, step_group: List[SimulationState]):
+        phase_moles = self.molar_breakdown(step_group)
         frac_moles = {}
         total = sum(phase_moles.values())
         for phase, amt in phase_moles.items():
@@ -84,8 +75,8 @@ class ReactionStepAnalyzer(DiscreteStepAnalyzer):
         
         return frac_moles
 
-    def elemental_composition(self, step):
-        molar_breakdown = self.molar_breakdown(step)
+    def elemental_composition(self, step_group: List[SimulationState]):
+        molar_breakdown = self.molar_breakdown(step_group)
         elemental_amounts = {}
         total = 0
         for phase, moles in molar_breakdown.items():

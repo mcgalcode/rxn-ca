@@ -1,84 +1,50 @@
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-from pylattica.discrete import DiscreteResultAnalyzer
 
 from ..core.solid_phase_set import SolidPhaseSet
 from ..core.reaction_result import ReactionResult
 from ..reactions.scored_reaction_set import ScoredReactionSet
 
+from .bulk_step_analyzer import BulkReactionStepAnalyzer
 from .reaction_step_analyzer import ReactionStepAnalyzer
 
 from typing import Tuple, List
 
 
-class ReactionAnalyzer(DiscreteResultAnalyzer):
+class BulkReactionAnalyzer():
     """A class that stores the result of running a simulation. Keeps track of all
     the steps that the simulation proceeded through, and the set of reactions that
     was used in the simulation.
     """
 
 
-    def __init__(self, result: ReactionResult):
+    def __init__(self, results: List[ReactionResult]):
         """Initializes a ReactionResult with the reaction set used in the simulation
 
         Args:
             rxn_set (ScoredReactionSet):
         """
-        self.rxn_set: ScoredReactionSet = result.rxn_set
-        self.step_analyzer = ReactionStepAnalyzer(self.rxn_set.phases)
-        super().__init__(result)
+        self.rxn_set: ScoredReactionSet = results[0].rxn_set
+        self.bulk_step_analyzer = BulkReactionStepAnalyzer(self.rxn_set.phases)
+        self.single_step_analyzer = ReactionStepAnalyzer(self.rxn_set.phases)
 
-    def get_choices_at(self, step_no: int, top: int = None, exclude_ids = True) -> None:
-        data = self.step_analyzer.get_reaction_choices(self.result.get_step(step_no))
-        names = list(data.keys())
-        values = list(data.values())
-        zipped = list(zip(names, values))
-        zipped.sort(key = lambda x: -x[1])
-
-        if exclude_ids:
-            filtered = list(filter(lambda item: not self.rxn_set.get_rxn_by_str(item[0]).is_identity, zipped))
-        else:
-            filtered = zipped
-
-        if top is None:
-            top = len(filtered)
-
-        return filtered[0:top]
-
-    def show_choices_at(self, step_no: int, top: int = None, exclude_ids = True) -> None:
-        choices = self.get_choices_at(step_no, top, exclude_ids)
-        for choice in choices:
-            print(choice[0])
-            print(f'Competitiveness: {self.rxn_set.get_rxn_by_str(choice[0]).competitiveness}')
-            if self.rxn_set.get_rxn_by_str(choice[0]).original_rxn is not None:
-                print(f'eV / atom: {self.rxn_set.get_rxn_by_str(choice[0]).original_rxn.energy_per_atom}')
-            print(f'Count: {choice[1]}')
-            print('--------------')
-
-    def plot_choices_at(self, step_no: int, top: int = None, exclude_ids = True) -> None:
-        choices = self.get_choices_at(step_no, top, exclude_ids)
-        sorted_names = list(map(lambda x: x[1], choices[0:top]))
-        sorted_values = list(map(lambda x: x[0], choices[0:top]))
-        fig, axs = plt.subplots(1, 1, figsize=(10, 10))
-        axs.bar(sorted_names, sorted_values)
-        fig.suptitle(f'Chosen Reactions @ Step {step_no}')
-
-        axs.set_xticklabels(sorted_names, rotation = 60)
-
-        fig.show()
-
+        self.result_length = len(results[0])
+        self.results = results
 
     def plot_elemental_amounts(self) -> None:
         fig = go.Figure()
         fig.update_layout(width=800, height=800, title="Molar Elemental Amount vs time step")
+        print("updated")
+        fig.update_layout(yaxis_range=[0,None])
+
         fig.update_yaxes(title="# of Moles")
         fig.update_xaxes(title="Simulation Step")
 
-        elements = list(self.step_analyzer.elemental_composition(self._result.first_step).keys())
+        elements = list(self.single_step_analyzer.elemental_composition(self.results[0].first_step).keys())
         traces = []
         
-        step_idxs, steps = self._get_steps_to_plot()
-        amounts = [self.step_analyzer.elemental_composition(s) for s in steps]
+        step_idxs, step_groups = self._get_step_groups()
+        amounts = [self.bulk_step_analyzer.elemental_composition(sg) for sg in step_groups]
         for el in elements:
             ys = [a.get(el, 0) for a in amounts]
             traces.append((step_idxs, ys, el))
@@ -99,12 +65,12 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
 
         fig = go.Figure()
         fig.update_layout(width=800, height=800, title="Prevalence by Simulation Step")
-        fig.update_yaxes(title="Prevalence")
+        fig.update_yaxes(title="Prevalence", range=(0, None))
 
         traces = []
-        step_idxs, steps = self._get_steps_to_plot()
+        step_idxs, step_groups = self._get_step_groups()
         fig.update_xaxes(range=[0, step_idxs[-1]], title="Simulation Step")
-        molar_breakdowns = [self.step_analyzer.molar_fractional_breakdown(step) for step in steps]
+        molar_breakdowns = [self.bulk_step_analyzer.molar_fractional_breakdown(sg) for sg in step_groups]
 
         phases = set()
         for bd in molar_breakdowns:
@@ -131,12 +97,12 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
 
         fig = go.Figure()
         fig.update_layout(width=800, height=800, title="Absolute Molar Prevalence by Simulation Step")
-        fig.update_yaxes(title="# of Moles")
+        fig.update_yaxes(title="# of Moles", range=[0, None])
 
         traces = []
-        step_idxs, steps = self._get_steps_to_plot()
+        step_idxs, step_groups = self._get_step_groups()
         fig.update_xaxes(range=[0, step_idxs[-1]], title="Simulation Step")
-        molar_breakdowns = [self.step_analyzer.molar_breakdown(step) for step in steps]
+        molar_breakdowns = [self.bulk_step_analyzer.molar_breakdown(step_group) for step_group in step_groups]
 
         phases = set()
         for bd in molar_breakdowns:
@@ -154,19 +120,6 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
 
         fig.show()
 
-    def final_mol_fractions(self):
-        return self.all_mole_fractions_at(len(self._result))
-
-    def all_mole_fractions_at(self, step):
-        fracs = {}
-        for phase in self.all_phases():
-            fracs[phase] = self.step_analyzer.mole_fraction(self._result.get_step(step), phase)
-
-        return fracs
-
-    def mole_fraction_at(self, step, phase):
-        return self.step_analyzer.mole_fraction(self.steps[step - 1], phase)
-
     def as_dict(self):
         return {
             "@module": self.__class__.__module__,
@@ -175,3 +128,10 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
             "rxn_set": self.rxn_set.as_dict(),
             "phase_set": self.phase_set.as_dict()
         }
+
+    def _get_step_groups(self) -> Tuple[List[int], List]:
+        num_points = min(100, self.result_length)
+        step_size = max(1, round(self.result_length / num_points))
+        [r.load_steps(step_size) for r in self.results]
+        step_idxs = list(range(0, self.result_length, step_size))
+        return step_idxs, [[r.get_step(step_idx) for r in self.results] for step_idx in step_idxs]

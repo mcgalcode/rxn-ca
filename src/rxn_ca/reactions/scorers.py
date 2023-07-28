@@ -1,9 +1,13 @@
 import math
-import tqdm
+from tqdm import tqdm
 from abc import ABC, abstractmethod
 from .scored_reaction import ScoredReaction
+from .scored_reaction_set import ScoredReactionSet
+from .reaction_library import ReactionLibrary
+
 from ..core.solid_phase_set import SolidPhaseSet
 from .utils import get_phase_vols
+from typing import List
 
 from rxn_network.reactions.reaction_set import ReactionSet
 from rxn_network.reactions.computed import ComputedReaction
@@ -44,11 +48,34 @@ def score_rxns(reactions: list[ComputedReaction], scorer: BasicScore):
 
     scored_reactions = []
 
-    for rxn in tqdm.tqdm(reactions, desc="Scoring reactions..."):
+    for rxn in tqdm(reactions, desc="Scoring reactions..."):
         scored_rxn = ScoredReaction.from_rxn_network(scorer.score(rxn), rxn, vols)
         scored_reactions.append(scored_rxn)
 
     return scored_reactions, phase_set
+
+def score_rxns_many_temps(reactions: ReactionSet, temps: List[int]):
+    scorers = [ArrheniusScore(t) for t in temps]
+    all_phases = list(set([e.composition.reduced_formula for e in reactions.entries]))
+    vols = get_phase_vols(all_phases)
+    phase_set = SolidPhaseSet(all_phases, volumes=vols)
+
+    rsets: List[ReactionSet] = []
+    for t in tqdm(temps, desc="Calculating reaction energies at temperatures..."):
+        rsets.append(reactions.set_new_temperature(t))
+
+    rxn_library = ReactionLibrary(reactions, phase_set)
+    for t, scorer, rset in zip(temps, scorers, rsets):
+        scored_rxns: List[ScoredReaction] = []
+        for rxn in tqdm(rset.get_rxns(), desc=f'Calculating reaction scores at {t}'):
+            scored_rxn = ScoredReaction.from_rxn_network(scorer.score(rxn), rxn, vols)
+            scored_rxns.append(scored_rxn)
+
+        rxn_set = ScoredReactionSet(scored_rxns, phase_set)
+        rxn_library.add_rxns_at_temp(rxn_set, t)
+    
+    return rxn_library
+
 
 def score_rxn_network_rxn_set(reactions: ReactionSet, scorer):
     scores = [scorer.score(rxn) for rxn in reactions]

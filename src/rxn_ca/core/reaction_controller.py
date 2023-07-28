@@ -4,7 +4,7 @@ import random
 from typing import Dict, List, Tuple
 from pylattica.discrete.state_constants import DISCRETE_OCCUPANCY
 from pylattica.core.periodic_structure import PeriodicStructure
-from pylattica.core.simulation_state import GENERAL, SITES, SimulationState
+from pylattica.core.simulation_state import SimulationState
 from pylattica.square_grid.neighborhoods import MooreNbHoodBuilder, VonNeumannNbHood2DBuilder, VonNeumannNbHood3DBuilder
 from pylattica.core.basic_controller import BasicController
 
@@ -12,6 +12,7 @@ from .normalizers import normalize
 from .solid_phase_set import SolidPhaseSet
 from .reaction_result import ReactionResult
 from .reaction_setup import VOLUME
+from ..reactions import ReactionLibrary
 from ..reactions import ScoredReactionSet, ScoredReaction
 
 DEFAULT_GASES = [
@@ -69,7 +70,8 @@ class ReactionController(BasicController):
 
     def __init__(self,
         structure: PeriodicStructure,
-        scored_rxns: ScoredReactionSet = None,
+        scored_rxns: ReactionLibrary = None,
+        phases: SolidPhaseSet = None,
         inertia = 1,
         open_species = {},
         free_species = None,
@@ -83,12 +85,16 @@ class ReactionController(BasicController):
 
         print(f'Interpreting {self.free_species} as gaseous in this reaction')
 
-        if scored_rxns is not None:
-            self.rxn_set = scored_rxns
+        self.rxn_set = scored_rxns
         
         self.structure = structure
         self.temperature = temperature
-        self.phase_set: SolidPhaseSet = scored_rxns.phases
+        if scored_rxns is not None:
+            self.phase_set: SolidPhaseSet = scored_rxns.phases
+        elif phases is not None:
+            self.phase_set = phases
+        else:
+            raise RuntimeError("Must specify either phases or scored_rxns when instantiating a ReactionController")
 
         nb_hood_builder = ReactionController.get_neighborhood_from_structure(structure)
 
@@ -101,6 +107,9 @@ class ReactionController(BasicController):
         for specie, strength in open_species.items():
             self.effective_open_distances[specie] = strength
     
+    def set_rxn_set(self, rxn_set: ScoredReactionSet):
+        self.rxn_set = rxn_set
+
     def get_random_site(self):
         return random.randint(0,len(self.structure.site_ids) - 1)
 
@@ -110,7 +119,7 @@ class ReactionController(BasicController):
     def get_state_update(self, site_id: int, prev_state: SimulationState):
         np.random.seed(None)
 
-        if random.random() < self.inertia:
+        if self.inertia > 0 and random.random() < self.inertia:
             return {}
 
         center_site_state = prev_state.get_site_state(site_id)
@@ -127,16 +136,16 @@ class ReactionController(BasicController):
                 return {}
             
             rxn = choose_from_list(rxns, [rxn.competitiveness for rxn in rxns])
-            
+            # print(rxn)
 
             site_updates = {
                 site_id: self.get_cell_updates(center_site_state, rxn),
             }
             
-            # if not chosen_rxn['open_el']:
-            #     other_state = chosen_rxn['other_site_state']
-            #     other_site_id = other_state["_site_id"]
-            #     site_updates[other_site_id] = self.get_cell_updates(other_state, rxn)
+            if not chosen_rxn['open_el']:
+                other_state = chosen_rxn['other_site_state']
+                other_site_id = other_state["_site_id"]
+                site_updates[other_site_id] = self.get_cell_updates(other_state, rxn)
 
             return site_updates
 
@@ -241,8 +250,6 @@ class ReactionController(BasicController):
             # This magic number 0 is because the reactions are ordered by score highest to lowest
             # as returned by the ScoredReactionSet::get_reaction method
             score = self.get_score_contribution(possible_reactions[0].competitiveness, distance)
-            # if len(possible_reactions.reactants) > 1:
-            #     score = self.adjust_score_for_nucleation(score, neighbor_phases, possible_reactions.products, possible_reactions.reactants, replaced_phase)
             return (possible_reactions, score)
         else:
             # Utilize the self reaction
