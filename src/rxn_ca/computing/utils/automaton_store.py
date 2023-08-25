@@ -33,11 +33,12 @@ class AutomatonStore():
             "output.job_type": JobTypes.ENUMERATE_RXNS.value
         }, {
             "output.chem_sys": True,
+            "output.stability_cutoff": True
         })
         systems = []
 
         for res in result:
-            systems.append((res["output"]["chem_sys"]))
+            systems.append((res["output"]["chem_sys"], res["output"]["stability_cutoff"]))
         return systems
     
     def delete_rxn_sets(self, chem_sys):

@@ -14,11 +14,15 @@ _heating = "_heating"
 _rxns = "rxns"
 
 def get_result(start):
-    return run_multi(
-        start,
-        mp_globals[_rxns],
-        mp_globals[_heating]
-    )
+    try:
+        return run_multi(
+            start,
+            mp_globals[_rxns],
+            mp_globals[_heating]
+        )
+    except:
+        print("Run failed!")
+        return None
 
 @dataclass
 class ParallelRxnMaker(Maker):
@@ -31,7 +35,8 @@ class ParallelRxnMaker(Maker):
              heating_schedule: List[Tuple[int]],
              reactant_ratios: Dict[str, float],
              simulation_size: int = 21,
-             simulation_dimension: int = 3):
+             simulation_dimension: int = 3,
+             num_realiziations: int = 8):
 
 
         print("================= RETRIEVING AND SCORING REACTIONS =================")
@@ -46,9 +51,9 @@ class ParallelRxnMaker(Maker):
 
 
         sim = setup(library.phases, reactant_ratios, simulation_size, dim=simulation_dimension)
-        PROCESSES = mp.cpu_count()
 
-        print(f'================= RUNNING SIMULATION w/ {PROCESSES} REALIZATIONS =================')
+
+        print(f'================= RUNNING SIMULATION w/ {num_realiziations} REALIZATIONS =================')
 
 
         global mp_globals
@@ -59,10 +64,13 @@ class ParallelRxnMaker(Maker):
         }
 
 
-        with mp.get_context("fork").Pool(PROCESSES) as pool:
-            results = pool.map(get_result, [sim for _ in range(PROCESSES)])
+        with mp.get_context("fork").Pool(num_realiziations) as pool:
+            results = pool.map(get_result, [sim for _ in range(num_realiziations)])
 
-        jserializable = [res.as_dict() for res in results]
+        good_results = [res for res in results if res is not None]
+        print(f'{len(good_results)} results achieved out of {len(results)}')
+
+        jserializable = [res.as_dict() for res in results if res is not None]
         
         return RxnCAResultDoc(
             chem_sys=chem_sys,
