@@ -6,59 +6,67 @@ from .scored_reaction_set import ScoredReactionSet
 from .reaction_library import ReactionLibrary
 
 from ..core.solid_phase_set import SolidPhaseSet
-from .utils import get_phase_vols
 from typing import List
 
 from rxn_network.reactions.reaction_set import ReactionSet
 from rxn_network.reactions.computed import ComputedReaction
 
-def arrhenius_score(energy, temp):
-    return math.exp(-energy / (8.6e-5 * temp * 5))
+from ..core.gasses import DEFAULT_GASES
 
+def softplus(x):
+    return 1/3 * math.log(1 + math.exp(3*x))
 
+def tamman_score(t_tm_ratio):
+    return math.exp(4.82*(t_tm_ratio) - 3.21)
+
+def huttig_score(t_tm_ratio):
+    return math.exp(2.41*(t_tm_ratio) - 0.8)
+         
 class BasicScore(ABC):
+
+    def __init__(self, phase_set: SolidPhaseSet, temp: int):
+        self.phases = phase_set
+        self.temp = temp
 
     @abstractmethod
     def score(self, rxn: ComputedReaction):
         pass
 
-class ArrheniusScore(BasicScore):
-
-    def __init__(self, temp):
-        self.temp = temp
-
-    def score(self, rxn):
-        return math.exp(-rxn.energy_per_atom / (8.6e-5 * self.temp * 8))
-
-class ConstantScore(BasicScore):
-
-    def __init__(self, score):
-        self.score = score
-
-    def score(self, _):
-        return self.score
+    
+class TammanHuttigScore(BasicScore):
+    # https://en.wikipedia.org/wiki/Tammann_and_H%C3%BCttig_temperatures
 
 
-def score_rxns(reactions: list[ComputedReaction], scorer: BasicScore):
-    rxn_list = list(reactions.get_rxns())
-    all_phases = list(set([ c.reduced_formula for r in rxn_list for c in r.compositions]))
-    vols = get_phase_vols(all_phases)
+    def score(self, rxn: ComputedReaction):
+        phases = [c.reduced_formula for c in rxn.reactants]
+        non_gasses = [p for p in phases if p not in DEFAULT_GASES]
+        mps = [self.phases.get_melting_point(p) for p in non_gasses]
+        min_mp = min(mps)
 
-    phase_set = SolidPhaseSet(all_phases, volumes=vols)
+        # Softplus adjustment
+        delta_g_adjustment = softplus(-rxn.energy_per_atom)
 
+        if len(non_gasses) < len(phases):
+            # Huttig
+            return huttig_score(self.temp / min_mp) * delta_g_adjustment
+        else:
+            # Tamman
+            return tamman_score(self.temp / min_mp) * delta_g_adjustment
+    
+
+
+def score_rxns(reactions: ReactionSet, scorer: BasicScore, phase_set: SolidPhaseSet = None):
     scored_reactions = []
 
-    for rxn in tqdm(reactions, desc="Scoring reactions..."):
-        scored_rxn = ScoredReaction.from_rxn_network(scorer.score(rxn), rxn, vols)
+    for rxn in tqdm(reactions.get_rxns(), desc="Scoring reactions..."):
+        scored_rxn = ScoredReaction.from_rxn_network(scorer.score(rxn), rxn, phase_set.volumes)
         scored_reactions.append(scored_rxn)
 
-    return scored_reactions, phase_set
+    return scored_reactions
 
-def score_rxns_many_temps(reactions: ReactionSet, temps: List[int]):
-    scorers = [ArrheniusScore(t) for t in temps]
-    all_phases = list(set([e.composition.reduced_formula for e in reactions.entries]))
-    vols = get_phase_vols(all_phases)
-    phase_set = SolidPhaseSet(all_phases, volumes=vols)
+def score_rxns_many_temps(reactions: ReactionSet, temps: List[int], score_class = TammanHuttigScore):
+    phase_set = SolidPhaseSet.from_rxn_set(reactions)
+    scorers = [score_class(temp=t, phase_set=phase_set) for t in temps]
 
     rsets: List[ReactionSet] = []
     for t in tqdm(temps, desc="Calculating reaction energies at temperatures..."):
@@ -66,25 +74,8 @@ def score_rxns_many_temps(reactions: ReactionSet, temps: List[int]):
 
     rxn_library = ReactionLibrary(reactions, phase_set)
     for t, scorer, rset in zip(temps, scorers, rsets):
-        scored_rxns: List[ScoredReaction] = []
-        for rxn in tqdm(rset.get_rxns(), desc=f'Calculating reaction scores at {t}'):
-            scored_rxn = ScoredReaction.from_rxn_network(scorer.score(rxn), rxn, vols)
-            scored_rxns.append(scored_rxn)
-
+        scored_rxns: List[ScoredReaction] = score_rxns(rset, scorer, phase_set=phase_set)
         rxn_set = ScoredReactionSet(scored_rxns, phase_set)
         rxn_library.add_rxns_at_temp(rxn_set, t)
     
     return rxn_library
-
-
-def score_rxn_network_rxn_set(reactions: ReactionSet, scorer):
-    scores = [scorer.score(rxn) for rxn in reactions]
-    rxn_scores = zip(reactions, scores)
-    scored_reactions = []
-    for rxn_score in rxn_scores:
-        rxn = rxn_score[0]
-        score = rxn_score[1]
-        scored_rxn = ScoredReaction.from_rxn_network(score, rxn)
-        scored_reactions = scored_reactions + [scored_rxn]
-
-    return scored_reactions

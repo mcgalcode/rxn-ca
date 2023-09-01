@@ -14,15 +14,7 @@ from .reaction_result import ReactionResult
 from .reaction_setup import VOLUME
 from ..reactions import ReactionLibrary
 from ..reactions import ScoredReactionSet, ScoredReaction
-
-DEFAULT_GASES = [
-    "H2",
-    "O2",
-    "H2O",
-    "CO",
-    "CO2",
-    "N2"
-]
+from .gasses import DEFAULT_GASES
 
 def choose_from_list(choices, scores):
     scores: np.array = np.array(scores)

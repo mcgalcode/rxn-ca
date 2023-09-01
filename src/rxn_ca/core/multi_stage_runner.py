@@ -28,6 +28,7 @@ def run_multi(simulation: Simulation, reaction_lib: ReactionLibrary, heating_sch
     starting_state = simulation.state
     
     for step in heating_schedule.steps:
+        print(f'Setting new temperature: {step.temp}')
         controller.set_rxn_set(reaction_lib.get_rxns_at_temp(step.temp))
 
         if len(results) > 0:

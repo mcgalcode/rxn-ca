@@ -154,6 +154,51 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
 
         fig.show()
 
+    def plot_phase_volumes(self, min_prevalence=0.01) -> None:
+        """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
+
+        Returns:
+            None:
+        """
+
+        fig = go.Figure()
+        fig.update_layout(width=800, height=800, title="Absolute Phase Volumes by Simulation Step")
+        fig.update_yaxes(title="Volume (cc)")
+
+        traces = []
+        step_idxs, steps = self._get_steps_to_plot()
+        fig.update_xaxes(range=[0, step_idxs[-1]], title="Simulation Step")
+        volume_breakdowns = [self.step_analyzer.phase_volumes(step) for step in steps]
+
+        phases = set()
+        for bd in volume_breakdowns:
+            phases = phases.union(set(bd.keys()))
+            
+        for phase in phases:
+            if phase is not SolidPhaseSet.FREE_SPACE:
+                ys = [vb.get(phase, 0) for vb in volume_breakdowns]
+                traces.append((step_idxs, ys, phase))
+
+        filtered_traces = [t for t in traces if max(t[1]) > min_prevalence]
+
+        for t in filtered_traces:
+            fig.add_trace(go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines'))
+
+        fig.show()
+    
+    def plot_total_volume(self):
+        fig = go.Figure()
+
+        step_idxs, steps = self._get_steps_to_plot()
+        volumes = [self.step_analyzer.total_volume(step) for step in steps]
+
+        fig.update_xaxes(range=[0, step_idxs[-1]], title="Simulation Step")
+        fig.update_layout(width=800, height=800, title="Total Simulation Volume")
+        fig.update_yaxes(range=[0, max(volumes) + max(volumes) * 0.05], title="Volume (cc)")
+        fig.add_trace(go.Scatter(name='Volume', x=step_idxs, y=volumes, mode='lines'))
+
+        fig.show()      
+
     def final_mol_fractions(self):
         return self.all_mole_fractions_at(len(self._result))
 

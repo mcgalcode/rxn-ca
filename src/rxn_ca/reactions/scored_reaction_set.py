@@ -43,7 +43,7 @@ class ScoredReactionSet():
 
         for phase in self.phases.phases:
             if phase is not SolidPhaseSet.FREE_SPACE:
-                self_rxn = ScoredReaction.self_reaction(phase, strength = 0.1)
+                self_rxn = ScoredReaction.self_reaction(phase, strength = 1)
                 existing = self.get_reactions([phase])
                 if len(existing) > 0 and not any(map(lambda rxn: rxn.is_identity, existing)):
                     self.add_rxn(self_rxn)
