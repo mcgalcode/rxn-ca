@@ -1,4 +1,5 @@
-from .core.reaction_controller import ReactionController
+
+from .core.reaction_controller import ReactionController, NB_HOOD_RADIUS
 from .core.reaction_result import ReactionResult
 from .core.solid_phase_set import SolidPhaseSet
 from .core.reaction_setup import ReactionSetup
@@ -7,7 +8,7 @@ from .core.heating import HeatingSchedule
 
 from .reactions.scored_reaction import ScoredReaction
 from .reactions.scored_reaction_set import ScoredReactionSet
-from .reactions.scorers import ArrheniusScore
+from .reactions.reaction_library import ReactionLibrary
 
 from typing import Dict
 
@@ -18,19 +19,28 @@ from pylattica.core import Runner, Simulation
 
 import typing
 
-def setup(phases: SolidPhaseSet, phase_mixture: Dict, size: int, dim: int = 2):
+def setup(phases: SolidPhaseSet, phase_mixture: Dict, size: int, dim: int = 2, particle_size = 1):
     phase_names = []
     phase_amts = []
     buffer_len = 5
 
-    num_site = int((dim - 0.5) * size**dim / buffer_len**dim)
-    print(f'Nucleating grains at {num_site} sites')
+    volume = size ** dim
+    buffer_vol = buffer_len ** dim
+    interaction_vol = 4 / 3 * NB_HOOD_RADIUS ** 3
+
+    print(f"Simulation volume is {volume}")
+    print(f"Interaction volume is {interaction_vol}")
+    num_desired_particles = volume /  (interaction_vol * particle_size)
+    num_allowed_particles = int((dim - 0.5) * volume / buffer_vol)
+
+    num_sites = min(num_desired_particles, num_allowed_particles)
+    print(f'Nucleating grains at {num_sites} sites')
     for name, amt in phase_mixture.items():
         phase_names.append(name)
         phase_amts.append(amt)
 
     setup = ReactionSetup(phases, dim=dim)
-    sim = setup.setup_growth(size, num_site, phase_names, phase_mol_ratios=phase_amts)
+    sim = setup.setup_growth(size, num_sites, phase_names, phase_mol_ratios=phase_amts)
     return sim
 
 def run(simulation: Simulation, num_steps: int, free_species=None, verbose=True, inertia=0):
@@ -51,15 +61,10 @@ def run(simulation: Simulation, num_steps: int, free_species=None, verbose=True,
     )
     return result
 
-def get_arrhenius_rxns(chemsys: str, temp: int, **kwargs):
-    store = AutomatonStore()
-    scorer = ArrheniusScore(temp)
-    rxns = store.get_scored_rxns(chemsys, temp, scorer, **kwargs)
-    return rxns
-
 def get_raw_rxns(chemsys: str):
     store = AutomatonStore()
-    return store.get_raw_rxns(chemsys)
+    rxn_set = store.get_raw_rxns(chemsys)
+    return ReactionLibrary(rxn_set)
 
 def enumerate_rxns(chem_sys,
                    temp = 300,

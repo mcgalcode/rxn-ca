@@ -1,10 +1,5 @@
 from typing import List
 
-from rxn_network.reactions.reaction_set import ReactionSet
-
-from ..reactions.reaction_library import ReactionLibrary
-from ..reactions.scorers import score_rxns_many_temps, TammanHuttigScore
-
 from monty.json import MSONable
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,7 +13,7 @@ class HeatingStep(MSONable):
         return cls(duration, temperature)
     
     @classmethod
-    def sweep(cls, t0, tf, stage_length = 200, step_size = 50):
+    def sweep(cls, t0, tf, stage_length = 2000, step_size = 100):
         if t0 == tf:
             raise ValueError("Initial and final temperatures cannot be the same!")
     
@@ -55,21 +50,11 @@ class HeatingSchedule(MSONable):
                     self.steps.append(s)
             else:
                 self.steps.append(step)
-
-    def calculate_rxns(self, rxns: ReactionSet, score_class = TammanHuttigScore) -> ReactionLibrary:
-        """Returns a ReactionLibrary with reactions calculated at every
-        temperature in this heating schedule.
-
-        Args:
-            rxns (ReactionSet): The ReactionSet containing the reactions to 
-            score at each temperature.
-
-        Returns:
-            ReactionLibrary:
-        """
-        temps = list(set([s.temp for s in self.steps]))
-        return score_rxns_many_temps(rxns, temps, score_class=score_class)
     
+    @property
+    def all_temps(self):
+        return list(set([s.temp for s in self.steps]))
+
     def as_dict(self):
         return [step.as_dict() for step in self.steps]
     

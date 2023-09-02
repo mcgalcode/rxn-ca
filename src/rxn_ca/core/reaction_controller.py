@@ -25,11 +25,17 @@ def choose_from_list(choices, scores):
 
     return choices[chosen_idx]    
 
+
+def scale_score_by_distance(score, distance):
+    return score * 1 / distance ** 2
+
+NB_HOOD_RADIUS = 5
+
 class ReactionController(BasicController):
 
     @classmethod
-    def get_neighborhood_from_size(cls, size, nb_builder = VonNeumannNbHood2DBuilder):
-        neighborhood_radius = cls.nb_radius_from_size(size)
+    def get_neighborhood(cls, nb_builder = VonNeumannNbHood2DBuilder):
+        neighborhood_radius = NB_HOOD_RADIUS
         print(f'Using neighborhood of size {neighborhood_radius}')
         return nb_builder(neighborhood_radius)
 
@@ -40,25 +46,7 @@ class ReactionController(BasicController):
                 nb_builder = VonNeumannNbHood3DBuilder
             else:
                 nb_builder = VonNeumannNbHood2DBuilder
-        return cls.get_neighborhood_from_size(structure.bounds[0], nb_builder=nb_builder)
-
-    @classmethod
-    def nb_radius_from_size(cls, size: int) -> int:
-        """Provided the side length of the simulation stage, generate the
-        appropriate filter size for the simulation. This routine chooses the smaller of:
-            1. The filter size that will cover the entire reaction stage
-            2. 25, which is a performance compromise
-        If the filter size is 25, then we are looking at reactant pairs up to 12 squares
-        away from eachother. Given that probability of proceeding scales as 1/d^2, this is equivalent
-        to cutting off possibility after the scaling drops below 1/144.
-
-        Args:
-            size (int): The side length of the simulation stage.
-
-        Returns:
-            int: The side length of the filter used in the convolution step.
-        """
-        return math.floor(min((size - 1) * 2 + 1, 21) / 2)
+        return cls.get_neighborhood(nb_builder=nb_builder)
 
     def __init__(self,
         structure: PeriodicStructure,
@@ -91,7 +79,6 @@ class ReactionController(BasicController):
         nb_hood_builder = ReactionController.get_neighborhood_from_structure(structure)
 
         self.nb_graph = nb_hood_builder.get(structure)
-        self.nucleation_nb_graph = MooreNbHoodBuilder(dim = structure.dim).get(structure)
         self.inertia = inertia
 
         # proxy for partial pressures
@@ -128,7 +115,6 @@ class ReactionController(BasicController):
                 return {}
             
             rxn = choose_from_list(rxns, [rxn.competitiveness for rxn in rxns])
-            # print(rxn)
 
             site_updates = {
                 site_id: self.get_cell_updates(center_site_state, rxn),
@@ -142,14 +128,6 @@ class ReactionController(BasicController):
             return site_updates
 
 
-    def immediate_neighbors(self, site_id: int, state: SimulationState):
-        neighbor_phases = []
-        for nb_id in self.nucleation_nb_graph.neighbors_of(site_id):
-            nb_state = state.get_site_state(nb_id)
-            neighbor_phases.append(nb_state[DISCRETE_OCCUPANCY])
-
-        return neighbor_phases
-
     def get_rxns_from_step(self, simulation_state, coords):
         site_id = self.structure.site_at(coords)['_site_id']
         return self.rxns_at_site(site_id, simulation_state)
@@ -157,8 +135,6 @@ class ReactionController(BasicController):
     def rxns_at_site(self, site_id: int, state: SimulationState):
         curr_state = state.get_site_state(site_id)
         this_phase = curr_state[DISCRETE_OCCUPANCY]
-
-        # neighbor_phases = self.immediate_neighbors(site_id, state)
 
         # Look through neighborhood, enumerate possible reactions
         rxn_choices = []
@@ -248,10 +224,6 @@ class ReactionController(BasicController):
             rxns = self.rxn_set.get_reactions([replaced_phase])
             score = self.get_score_contribution(self.inertia, distance)
             return (rxns, score)
-
-
-    def adjust_score_for_nucleation(self, score, neighbors, products, reactants, current_phase):
-        return score
 
     def get_score_contribution(self, weight, distance):
         return weight * 1 / distance ** 3

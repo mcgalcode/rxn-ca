@@ -2,9 +2,7 @@ from typing import Dict
 from ..core import ReactionSetup
 from ..core import ReactionSimulation
 from ..core import ReactionController
-from ..core import HeatingSchedule
-from ..reactions import ReactionLibrary
-from ..reactions import ScoredReactionSet, ArrheniusScore
+from ..reactions import ScoredReactionSet
 
 from ..computing import AutomatonStore, enumerate_flow
 
@@ -42,14 +40,6 @@ def run(simulation: ReactionSimulation, num_steps: int, free_species=None, verbo
         verbose=verbose
     )
     return result
-
-def get_arrhenius_rxns(chemsys: str, temp: HeatingSchedule, **kwargs):
-    store = AutomatonStore()
-    rxns = store.get_raw_rxns(chemsys, **kwargs)
-    if type(temp) == int:
-        sched = HeatingSchedule.from_const_temp(temp)
-        return rxns
-    return rxns
 
 def enumerate_rxns(chem_sys,
                    temp = 300,

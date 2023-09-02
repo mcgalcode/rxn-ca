@@ -63,19 +63,3 @@ def score_rxns(reactions: ReactionSet, scorer: BasicScore, phase_set: SolidPhase
         scored_reactions.append(scored_rxn)
 
     return scored_reactions
-
-def score_rxns_many_temps(reactions: ReactionSet, temps: List[int], score_class = TammanHuttigScore):
-    phase_set = SolidPhaseSet.from_rxn_set(reactions)
-    scorers = [score_class(temp=t, phase_set=phase_set) for t in temps]
-
-    rsets: List[ReactionSet] = []
-    for t in tqdm(temps, desc="Calculating reaction energies at temperatures..."):
-        rsets.append(reactions.set_new_temperature(t))
-
-    rxn_library = ReactionLibrary(reactions, phase_set)
-    for t, scorer, rset in zip(temps, scorers, rsets):
-        scored_rxns: List[ScoredReaction] = score_rxns(rset, scorer, phase_set=phase_set)
-        rxn_set = ScoredReactionSet(scored_rxns, phase_set)
-        rxn_library.add_rxns_at_temp(rxn_set, t)
-    
-    return rxn_library
