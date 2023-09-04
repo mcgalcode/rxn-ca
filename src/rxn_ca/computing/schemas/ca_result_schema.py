@@ -1,20 +1,19 @@
-from typing import Any, List, Tuple, Dict
-from pydantic import BaseModel, Field
+from typing import Any, List, Dict
 
-from ...core.heating import HeatingSchedule
+from ...core.recipe import ReactionRecipe
 
-from ..utils.functions import format_chem_sys
 from .job_types import JobTypes
+from monty.json import MSONable
+from dataclasses import dataclass
 
 import json
 
-class RxnCAResultDoc(BaseModel):
+@dataclass
+class RxnCAResultDoc(MSONable):
 
-    chem_sys: str = Field(description="The chemical system used")
-    heating_schedule: HeatingSchedule = Field(description="The temperature of the simulation")
-    reactant_amts: Dict[str, float] = Field(description="Initial reactant amounts")
-    results: List[Dict] = Field(description="The serialized result object")
-    job_type: str = Field(default=JobTypes.RUN_RXN_AUTOMATON.value)
+    recipe: ReactionRecipe
+    results: List[Dict]
+    job_type: str = JobTypes.RUN_RXN_AUTOMATON.value
 
     @classmethod
     def from_file(cls, fname):
@@ -24,23 +23,16 @@ class RxnCAResultDoc(BaseModel):
     @classmethod
     def from_dict(cls, d):
         return cls(
-            chem_sys = d["chem_sys"],
-            heating_schedule = HeatingSchedule.from_dict(d["heating_schedule"]),
-            reactant_amts = d["reactant_amts"],
+            recipe = ReactionRecipe.from_dict(d['recipe']),
             results = d["results"],
         )
 
-    def __init__(self, **data: Any):
-        super().__init__(**data)
-        self.chem_sys = format_chem_sys(self.chem_sys)
-
     def as_dict(self):
-        return {
-            "chem_sys": self.chem_sys,
-            "heating_schedule": self.heating_schedule.as_dict(),
-            "reactant_amts": self.reactant_amts,
+        d = super().as_dict()
+        return { **d, **{
+            "recipe": self.recipe.as_dict(),
             "results": self.results,
-        }
+        }}
 
     def to_file(self, fname):
         with open(fname, "w+") as f:

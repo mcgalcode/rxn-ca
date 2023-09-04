@@ -49,7 +49,7 @@ class HeatingSchedule(MSONable):
     
     @classmethod
     def from_dict(cls, d):
-        steps = [HeatingStep.from_dict(s) for s in d]
+        steps = [HeatingStep.from_dict(s) for s in d['steps']]
         sched = cls(steps)
         return sched
 
@@ -72,7 +72,10 @@ class HeatingSchedule(MSONable):
         return list(set([s.temp for s in self.steps]))
 
     def as_dict(self):
-        return [step.as_dict() for step in self.steps]
+        d = super().as_dict()
+        return {**d, **{
+            "steps": [step.as_dict() for step in self.steps]
+        }}
     
     def temp_at(self, step_idx):
         tallied = 0

@@ -8,6 +8,8 @@ from ..reactions.scored_reaction_set import ScoredReactionSet
 from .bulk_step_analyzer import BulkReactionStepAnalyzer
 from .reaction_step_analyzer import ReactionStepAnalyzer
 
+from ..computing.schemas.ca_result_schema import RxnCAResultDoc
+
 from typing import Tuple, List
 
 
@@ -17,6 +19,11 @@ class BulkReactionAnalyzer():
     was used in the simulation.
     """
 
+    @classmethod
+    def from_result_doc_file(cls, fname):
+        doc = RxnCAResultDoc.from_file(fname)
+        results = [ReactionResult.from_dict(r) for r in doc.results]
+        return cls(results)
 
     def __init__(self, results: List[ReactionResult]):
         """Initializes a ReactionResult with the reaction set used in the simulation
