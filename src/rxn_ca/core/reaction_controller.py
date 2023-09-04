@@ -5,16 +5,16 @@ from typing import Dict, List, Tuple
 from pylattica.discrete.state_constants import DISCRETE_OCCUPANCY
 from pylattica.core.periodic_structure import PeriodicStructure
 from pylattica.core.simulation_state import SimulationState
-from pylattica.square_grid.neighborhoods import MooreNbHoodBuilder, VonNeumannNbHood2DBuilder, VonNeumannNbHood3DBuilder
+from pylattica.square_grid.neighborhoods import VonNeumannNbHood2DBuilder, VonNeumannNbHood3DBuilder
 from pylattica.core.basic_controller import BasicController
 
 from .normalizers import normalize
-from .solid_phase_set import SolidPhaseSet
+from ..phases.solid_phase_set import SolidPhaseSet
 from .reaction_result import ReactionResult
 from .reaction_setup import VOLUME
 from ..reactions import ReactionLibrary
 from ..reactions import ScoredReactionSet, ScoredReaction
-from .gasses import DEFAULT_GASES
+from ..phases.gasses import DEFAULT_GASES
 
 def choose_from_list(choices, scores):
     scores: np.array = np.array(scores)
@@ -31,6 +31,9 @@ def scale_score_by_distance(score, distance):
 
 NB_HOOD_RADIUS = 5
 
+
+# TODO: PRECALCULATE ALL POSSIBLE REACTIONS, UPDATE
+# AFTER EACH STEP ONLY AT CELLS THAT HAVE CHANGED
 class ReactionController(BasicController):
 
     @classmethod
@@ -55,7 +58,7 @@ class ReactionController(BasicController):
         inertia = 1,
         open_species = {},
         free_species = None,
-        temperature = None,
+        heating_schedule = None,
     ) -> None:
         
         if free_species is None:
@@ -68,7 +71,7 @@ class ReactionController(BasicController):
         self.rxn_set = scored_rxns
         
         self.structure = structure
-        self.temperature = temperature
+        self.heating_schedule = heating_schedule
         if scored_rxns is not None:
             self.phase_set: SolidPhaseSet = scored_rxns.phases
         elif phases is not None:
@@ -93,13 +96,14 @@ class ReactionController(BasicController):
         return random.randint(0,len(self.structure.site_ids) - 1)
 
     def instantiate_result(self, starting_state: SimulationState):
-        return ReactionResult(starting_state, self.rxn_set)
+        return ReactionResult(
+            starting_state,
+            self.rxn_set,
+            heating_schedule=self.heating_schedule
+        )
 
     def get_state_update(self, site_id: int, prev_state: SimulationState):
         np.random.seed(None)
-
-        if self.inertia > 0 and random.random() < self.inertia:
-            return {}
 
         center_site_state = prev_state.get_site_state(site_id)
 
@@ -116,6 +120,7 @@ class ReactionController(BasicController):
             
             rxn = choose_from_list(rxns, [rxn.competitiveness for rxn in rxns])
 
+            # rxn = rxns[np.argmax([rxn.competitiveness for rxn in rxns])]
             site_updates = {
                 site_id: self.get_cell_updates(center_site_state, rxn),
             }
@@ -143,7 +148,7 @@ class ReactionController(BasicController):
 
             site_state = state.get_site_state(nb_id)
             neighbor_phase = site_state[DISCRETE_OCCUPANCY]
-            rxns, score = self.get_rxn_and_score([neighbor_phase, this_phase], distance, None, this_phase)
+            rxns, score = self.get_rxn_and_score([neighbor_phase, this_phase], distance, this_phase)
             rxn_choices.append({
                 'other_site_state': site_state,
                 'reactions': rxns,
@@ -153,16 +158,16 @@ class ReactionController(BasicController):
             })
 
         # Readd open species reactions later
-        possible_reactions = [*rxn_choices, *self.rxns_with_open_species(this_phase, None)]
-
+        possible_reactions = [*rxn_choices, *self.rxns_with_open_species(this_phase)]
+        # print(possible_reactions)
         return possible_reactions
 
-    def rxns_with_open_species(self, this_phase, neighbor_phases):
+    def rxns_with_open_species(self, this_phase):
         rxn_choices = []
         for specie, dist in self.effective_open_distances.items():
-            rxn, score = self.get_rxn_and_score([this_phase, specie], dist, neighbor_phases, this_phase)
+            rxns, score = self.get_rxn_and_score([this_phase, specie], dist, this_phase)
             rxn_choices.append({
-                'reaction': rxn,
+                'reactions': rxns,
                 'best_score': score,
                 'other_site_state': None,
                 'other_phase': None,
@@ -185,8 +190,9 @@ class ReactionController(BasicController):
 
         # The current site should be replaced if a randomly chosen reactant is the current species
         current_phase_replacement = self.get_phase_replacement_from_reaction(reaction, current_spec, current_vol)
+
         if current_phase_replacement is not None:
-            volume_ratio = reaction.product_reactant_stoich_ratio
+            volume_ratio = reaction.solid_product_reactant_stoich_ratio
             updates[DISCRETE_OCCUPANCY] = current_phase_replacement
             updates[VOLUME] = volume_ratio * cell_state[VOLUME]
         
@@ -194,7 +200,7 @@ class ReactionController(BasicController):
 
     
     def get_phase_replacement_from_reaction(self, rxn: ScoredReaction, reactant_phase: str, reactant_vol: float) -> Dict:
-        stoich_fraction = rxn.reactant_stoich_fraction(reactant_phase)
+        stoich_fraction = rxn.solid_reactant_stoich_fraction(reactant_phase)
         # IMPORTANT: This division ensures that the likelihood of consuming a particular cell decreases with
         # the size of that cell - it should take twice as many "tries" to consume twice as much
         # volume
@@ -211,7 +217,7 @@ class ReactionController(BasicController):
         else:   
             return None
 
-    def get_rxn_and_score(self, reactants, distance, neighbor_phases, replaced_phase):
+    def get_rxn_and_score(self, reactants, distance, replaced_phase):
 
         possible_reactions = self.rxn_set.get_reactions(reactants)
         if len(possible_reactions) > 0:

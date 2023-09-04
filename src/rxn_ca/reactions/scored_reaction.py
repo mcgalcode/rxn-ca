@@ -3,6 +3,7 @@ import typing
 from numbers import Number
 
 from rxn_network.reactions.basic import BasicReaction
+from ..phases.gasses import DEFAULT_GASES
 
 def stoich_map_to_str(stoich_map: typing.Dict[str, Number]) -> str:
     """Generates a string that encapsulates a stoichiometry map. For example
@@ -89,11 +90,21 @@ class ScoredReaction:
 
         self.reactants = frozenset(self._reactants.keys())
         self.products = frozenset(self._products.keys())
+
+        self.solid_reactants = frozenset([ r for r in self._reactants.keys() if r not in DEFAULT_GASES])
+        self.solid_products = frozenset([ r for r in self._products.keys() if r not in DEFAULT_GASES])
+
         self.is_identity = self.reactants == self.products
 
         self.total_reactant_stoich = sum(reactants.values())
         self.total_product_stoich = sum(products.values())
+
+        self.total_solid_reactant_stoich = sum([reactants[r] for r in self.solid_reactants])
+        self.total_solid_product_stoich = sum([products[r] for r in self.solid_products])
+
         self.product_reactant_stoich_ratio = self.total_product_stoich / self.total_reactant_stoich
+        self.solid_product_reactant_stoich_ratio = self.total_solid_product_stoich / self.total_solid_reactant_stoich
+
         self.competitiveness: Number = competitiveness
         self._as_str = f"{stoich_map_to_str(self._reactants)}->{stoich_map_to_str(self._products)}"
 
@@ -163,6 +174,20 @@ class ScoredReaction:
         """
         try:
             return self._reactants[phase] / self.total_reactant_stoich
+        except:
+            print(phase, str(self))
+
+    def solid_reactant_stoich_fraction(self, phase: str) -> Number:
+        """Returns the stoichiometry in this reaction for the desired product phase.
+
+        Args:
+            phase (str): The phase whose stoichiometry is desired
+
+        Returns:
+            Number:
+        """
+        try:
+            return self._reactants[phase] / self.total_solid_reactant_stoich
         except:
             print(phase, str(self))
 

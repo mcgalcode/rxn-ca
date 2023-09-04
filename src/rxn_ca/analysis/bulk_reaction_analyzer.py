@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
-from ..core.solid_phase_set import SolidPhaseSet
+from ..phases.solid_phase_set import SolidPhaseSet
 from ..core.reaction_result import ReactionResult
 from ..reactions.scored_reaction_set import ScoredReactionSet
 

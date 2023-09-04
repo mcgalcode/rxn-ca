@@ -18,27 +18,22 @@ class AutomatonStore():
         else:
             self.store = store
 
-    def get_rxn_enumeration_by_task_id(self, task_id: str):
-        result = self.store.query_one({
-                "output.task_id": task_id,
-                "output.job_type": JobTypes.ENUMERATE_RXNS.value
-            })
-        if result is not None:
-            return ReactionSet.from_dict(result["output"]["rxn_set"])
-        else:
-            return None
-
     def list_available_sets(self, ):
         result = self.store.query({
             "output.job_type": JobTypes.ENUMERATE_RXNS.value
         }, {
             "output.chem_sys": True,
-            "output.stability_cutoff": True
+            "output.stability_cutoff": True,
+            "output.temperature": True
         })
         systems = []
 
         for res in result:
-            systems.append((res["output"]["chem_sys"], res["output"]["stability_cutoff"]))
+            systems.append((
+                res["output"]["chem_sys"],
+                res["output"]["stability_cutoff"],
+                res["output"]["temperature"]
+            ))
         return systems
     
     def delete_rxn_sets(self, chem_sys):
@@ -48,32 +43,22 @@ class AutomatonStore():
         })
         return result
 
-    def get_raw_rxns(self, chem_sys, cutoff = None) -> ReactionSet:
+    def get_raw_rxns(self, chem_sys, cutoff = None, temp = 300) -> ReactionSet:
         chem_sys = format_chem_sys(chem_sys)
         criteria = {
             "output.job_type": JobTypes.ENUMERATE_RXNS.value,
             "output.chem_sys": chem_sys,
+            "output.temperature": temp,
         }
         if cutoff is not None:
             criteria["output.stability_cutoff"] = cutoff
-
+        
         result = self.store.query_one(criteria)
-        # print(result["output"]["rxn_set"])
 
         if result is not None:
             return ReactionSet.from_dict(result["output"]["rxn_set"])
         else:
             return None
-
-    def get_scored_rxns(self, chem_sys, temperature, scorer, **kwargs):
-        raw: ReactionSet = self.get_raw_rxns(chem_sys, **kwargs)
-        if raw is None:
-            raise RuntimeError(f'No reactions found for chem sys {chem_sys}')
-        
-        print(f'Calculating reactions at new temperature {temperature}')
-        raw.set_new_temperature(temperature)
-        rxns, phases = score_rxns(raw, scorer)
-        return ScoredReactionSet(rxns, phases)
 
 
     def get_automaton_result_by_task(self, task_id: str):

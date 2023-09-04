@@ -3,7 +3,8 @@ from typing import Dict
 import json
 
 from .scored_reaction import ScoredReaction
-from ..core.solid_phase_set import SolidPhaseSet
+from ..phases.solid_phase_set import SolidPhaseSet
+from ..phases.gasses import DEFAULT_GASES
 
 class ScoredReactionSet():
     """A set of ScoredReactions that capture the events that can occur during a simulation. Typically
@@ -42,7 +43,7 @@ class ScoredReactionSet():
             self.add_rxn(r)
 
         for phase in self.phases.phases:
-            if phase is not SolidPhaseSet.FREE_SPACE:
+            if phase not in DEFAULT_GASES and phase is not SolidPhaseSet.FREE_SPACE:
                 self_rxn = ScoredReaction.self_reaction(phase, strength = 1)
                 existing = self.get_reactions([phase])
                 if len(existing) > 0 and not any(map(lambda rxn: rxn.is_identity, existing)):

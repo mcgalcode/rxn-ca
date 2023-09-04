@@ -4,7 +4,7 @@ import random
 
 from pylattica.core.simulation import Simulation
 
-from .solid_phase_set import SolidPhaseSet
+from ..phases.solid_phase_set import SolidPhaseSet
 from ..analysis.reaction_step_analyzer import ReactionStepAnalyzer
 from .constants import VOLUME
 from pylattica.square_grid import DiscreteGridSetup, PseudoHexagonalNeighborhoodBuilder2D, PseudoHexagonalNeighborhoodBuilder3D, GrowthSetup

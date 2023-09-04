@@ -20,7 +20,7 @@ class HeatingStep(MSONable):
         if tf < t0:
             step_size = -step_size
 
-        temps = list(np.arange(t0,tf,step_size))
+        temps = [int(s) for s in np.arange(t0,tf,step_size)]
         temps.append(tf)
         return [cls(stage_length, t) for t in temps]
         
@@ -29,13 +29,29 @@ class HeatingStep(MSONable):
         self.duration = duration
         self.temp = temp
 
+    @classmethod
+    def from_dict(cls, d):
+        return cls(
+            d["duration"],
+            d["temperature"]
+        )
+
     def as_dict(self):
-        return (self.duration, self.temp)
+        return {
+            "duration": self.duration, 
+            "temperature": self.temp
+        }
 
 class HeatingSchedule(MSONable):
     """Captures the information of a heating schedule, e.g. ramping up
     to a particular temperature, holding, and then cooling back down
     """
+    
+    @classmethod
+    def from_dict(cls, d):
+        steps = [HeatingStep.from_dict(s) for s in d]
+        sched = cls(steps)
+        return sched
 
     def __init__(self, *args):
         # schedules at first can just be a series of steps, e.g.:
@@ -58,6 +74,13 @@ class HeatingSchedule(MSONable):
     def as_dict(self):
         return [step.as_dict() for step in self.steps]
     
+    def temp_at(self, step_idx):
+        tallied = 0
+        for step in self.steps:
+            tallied += step.duration
+            if tallied > step_idx:
+                return step.temp
+    
     def plot(self):
         fig, axs = plt.subplots()
         total_length = sum([s.duration for s in self.steps])
@@ -66,10 +89,15 @@ class HeatingSchedule(MSONable):
         xs = []
         ys = []
 
+
         for step in self.steps:
             xs.append(curr_x)
             ys.append(step.temp)
             curr_x += step.duration
+
+        if len(self.steps) == 1:
+            xs.append(self.steps[0].duration)
+            ys.append(self.steps[0].temp)
 
         axs.plot(xs, ys)
         axs.hlines(298, -100, total_length + 100, color='r')

@@ -12,15 +12,28 @@ from .constants import TEMPERATURE
 from typing import List, Dict
 
 
-def run_multi(simulation: Simulation, reaction_lib: ReactionLibrary, heating_schedule: HeatingSchedule, free_species=None, verbose=True, inertia=0):
+def run_multi(simulation: Simulation,
+              reaction_lib: ReactionLibrary,
+              heating_schedule: HeatingSchedule,
+              free_species=None,
+              verbose=True,
+              inertia=1,
+              open_gas=None):
     runner = Runner(is_async=True)
-    print(f'Running simulation with inertia {inertia}')
+
+    open_species = {}
+    if open_gas is not None:
+        open_species = {
+            open_gas: 1.0
+        }
 
     controller = ReactionController(
         simulation.structure,
         phases=reaction_lib.phases,
         free_species=free_species,
-        inertia=inertia
+        inertia=inertia,
+        open_species=open_species,
+        heating_schedule=heating_schedule
     )
     
     results = []
@@ -55,17 +68,21 @@ def run_multi(simulation: Simulation, reaction_lib: ReactionLibrary, heating_sch
     return result
 
 def get_new_starting_state(prev_result: ReactionResult, new_updates: Dict):
-    prev_result.load_steps()
-    new_starting_state = prev_result.last_step
+    new_starting_state = prev_result.output
     new_starting_state.batch_update(new_updates)
     return new_starting_state
 
 
 def concatenate_results(results: List[ReactionResult]):
     starting_state = results[0].initial_state
+    heating_schedule = results[0].heating_schedule
     rxn_set = results[0].rxn_set
 
-    new_result = ReactionResult(starting_state, rxn_set)
+    new_result = ReactionResult(
+        starting_state,
+        rxn_set,
+        heating_schedule=heating_schedule
+    )
 
     for res in results:
         for d in res._diffs:

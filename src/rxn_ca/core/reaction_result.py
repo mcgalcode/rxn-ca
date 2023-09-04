@@ -1,6 +1,6 @@
 from pylattica.core import SimulationState, SimulationResult
 from ..reactions import ScoredReactionSet
-
+from .heating import HeatingSchedule
 
 class ReactionResult(SimulationResult):
     """A class that stores the result of running a simulation. Keeps track of all
@@ -19,7 +19,10 @@ class ReactionResult(SimulationResult):
             res.add_step(diff)
         return res
 
-    def __init__(self, starting_state: SimulationState, rxn_set: ScoredReactionSet):
+    def __init__(self,
+                 starting_state: SimulationState,
+                 rxn_set: ScoredReactionSet,
+                 heating_schedule: HeatingSchedule = None):
         """Initializes a ReactionResult with the reaction set used in the simulation
 
         Args:
@@ -27,6 +30,7 @@ class ReactionResult(SimulationResult):
         """
         super().__init__(starting_state)
         self.rxn_set: ScoredReactionSet = rxn_set
+        self.heating_schedule = heating_schedule
     
     def as_dict(self):
         return {

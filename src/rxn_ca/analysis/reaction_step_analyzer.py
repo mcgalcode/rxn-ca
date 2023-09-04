@@ -5,7 +5,7 @@ from pylattica.core import SimulationState
 from pylattica.discrete import DiscreteStepAnalyzer
 from pylattica.discrete.state_constants import DISCRETE_OCCUPANCY
 
-from ..core.solid_phase_set import SolidPhaseSet
+from ..phases.solid_phase_set import SolidPhaseSet
 from ..core.constants import VOLUME
 
 

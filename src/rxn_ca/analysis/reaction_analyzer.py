@@ -2,13 +2,12 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from pylattica.discrete import DiscreteResultAnalyzer
 
-from ..core.solid_phase_set import SolidPhaseSet
+from ..phases.solid_phase_set import SolidPhaseSet
 from ..core.reaction_result import ReactionResult
 from ..reactions.scored_reaction_set import ScoredReactionSet
 
 from .reaction_step_analyzer import ReactionStepAnalyzer
 
-from typing import Tuple, List
 
 
 class ReactionAnalyzer(DiscreteResultAnalyzer):
@@ -25,6 +24,8 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
             rxn_set (ScoredReactionSet):
         """
         self.rxn_set: ScoredReactionSet = result.rxn_set
+        self.phases = self.rxn_set.phases
+        self.heating_schedule = result.heating_schedule
         self.step_analyzer = ReactionStepAnalyzer(self.rxn_set.phases)
         super().__init__(result)
 
@@ -86,7 +87,9 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
 
         for t in traces:
             fig.add_trace(go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines'))
-
+        
+        fig.update_yaxes(range=[0, 100])
+        fig.update_layout(showlegend=True)
         fig.show()
 
 
@@ -112,13 +115,19 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
             
         for phase in phases:
             if phase is not SolidPhaseSet.FREE_SPACE:
-                ys = [mb.get(phase, 0) for mb in molar_breakdowns]
-                traces.append((step_idxs, ys, phase))
+                ys = []
+                xs = []
+                for s, mb in zip(step_idxs, molar_breakdowns):
+                    if self.heating_schedule.temp_at(s) <= self.phases.get_melting_point(phase):
+                        ys.append(mb.get(phase, 0))
+                        xs.append(s)
+                traces.append((xs, ys, phase))
 
         filtered_traces = [t for t in traces if max(t[1]) > min_prevalence]
 
         for t in filtered_traces:
             fig.add_trace(go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines'))
+        fig.update_layout(showlegend=True)
 
         fig.show()
 
@@ -152,6 +161,8 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
         for t in filtered_traces:
             fig.add_trace(go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines'))
 
+        fig.update_layout(showlegend=True)
+
         fig.show()
 
     def plot_phase_volumes(self, min_prevalence=0.01) -> None:
@@ -183,6 +194,7 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
 
         for t in filtered_traces:
             fig.add_trace(go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines'))
+        fig.update_layout(showlegend=True)
 
         fig.show()
     

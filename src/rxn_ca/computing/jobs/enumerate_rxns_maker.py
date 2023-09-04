@@ -45,6 +45,7 @@ class EnumerateRxnsMaker(Maker):
             
         enumeration_maker = ReactionEnumerationMaker()
         entries = eset.entries
+        
         rxns: ReactionSet = enumeration_maker.make.original(enumeration_maker, enumerators, entries)
         result_model = EnumeratedRxnsModel.from_obj(
             rxns.rxns,
