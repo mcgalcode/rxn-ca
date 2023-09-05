@@ -96,11 +96,7 @@ class ReactionController(BasicController):
         return random.randint(0,len(self.structure.site_ids) - 1)
 
     def instantiate_result(self, starting_state: SimulationState):
-        return ReactionResult(
-            starting_state,
-            self.rxn_set,
-            heating_schedule=self.heating_schedule
-        )
+        return ReactionResult(starting_state)
 
     def get_state_update(self, site_id: int, prev_state: SimulationState):
         np.random.seed(None)
@@ -160,6 +156,17 @@ class ReactionController(BasicController):
         # Readd open species reactions later
         possible_reactions = [*rxn_choices, *self.rxns_with_open_species(this_phase)]
         # print(possible_reactions)
+
+        # Always include the identity reaction
+        identity = self.rxn_set.get_reactions([this_phase])
+        possible_reactions.append({
+            'other_site_state': curr_state,
+            'reactions': identity,
+            'best_score': identity[0].competitiveness,
+            'other_phase': neighbor_phase,
+            'open_el': False
+        })
+
         return possible_reactions
 
     def rxns_with_open_species(self, this_phase):

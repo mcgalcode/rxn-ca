@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+from plotly.graph_objs.layout import YAxis,XAxis,Margin
 
 from ..phases.solid_phase_set import SolidPhaseSet
 from ..core.reaction_result import ReactionResult
-from ..reactions.scored_reaction_set import ScoredReactionSet
-
+from ..core.heating import HeatingSchedule
 from .bulk_step_analyzer import BulkReactionStepAnalyzer
 from .reaction_step_analyzer import ReactionStepAnalyzer
 
@@ -12,7 +12,8 @@ from ..computing.schemas.ca_result_schema import RxnCAResultDoc
 
 from typing import Tuple, List
 
-
+from pymatgen.core.composition import Composition
+import numpy as np
 class BulkReactionAnalyzer():
     """A class that stores the result of running a simulation. Keeps track of all
     the steps that the simulation proceeded through, and the set of reactions that
@@ -22,18 +23,17 @@ class BulkReactionAnalyzer():
     @classmethod
     def from_result_doc_file(cls, fname):
         doc = RxnCAResultDoc.from_file(fname)
-        results = [ReactionResult.from_dict(r) for r in doc.results]
-        return cls(results)
+        return cls(doc.results, doc.reaction_library.phases, doc.recipe.heating_schedule)
 
-    def __init__(self, results: List[ReactionResult]):
+    def __init__(self, results: List[ReactionResult], phase_set: SolidPhaseSet, heating_sched: HeatingSchedule):
         """Initializes a ReactionResult with the reaction set used in the simulation
 
         Args:
             rxn_set (ScoredReactionSet):
         """
-        self.rxn_set: ScoredReactionSet = results[0].rxn_set
-        self.bulk_step_analyzer = BulkReactionStepAnalyzer(self.rxn_set.phases)
-        self.single_step_analyzer = ReactionStepAnalyzer(self.rxn_set.phases)
+        self.bulk_step_analyzer = BulkReactionStepAnalyzer(phase_set)
+        self.single_step_analyzer = ReactionStepAnalyzer(phase_set)
+        self.heating_schedule = heating_sched
 
         self.result_length = len(results[0])
         self.results = results
@@ -62,6 +62,43 @@ class BulkReactionAnalyzer():
 
         fig.show()
 
+    def _get_plotly_fig(self, x_label, y_label, title, max_x):
+        layout = go.Layout(
+            title=title,
+            width=1000, height=800,
+            xaxis=XAxis(
+                title=x_label,
+                range=[0, max_x]
+            ),
+            yaxis2 = YAxis(
+                title="Temp (K)",
+                overlaying= 'y', 
+                side= 'right',
+            ),
+            yaxis=dict(
+                title=y_label,
+                range=(0, None),
+                side='left'
+            ),
+            legend=dict(
+                x=1.1,
+                y=0.6
+            )
+        )
+
+        fig = go.Figure(layout=layout)        
+
+
+        heating_xs, heating_ys = self.heating_schedule.get_xy_for_plot()
+        fig.add_trace(go.Scatter(
+            name="Temperature",
+            x=heating_xs,
+            y=heating_ys,
+            mode='lines',
+            yaxis='y2',
+            line = dict(color='royalblue', width=4, dash='dash')))
+        
+        return fig
 
     def plot_mole_fractions(self, min_prevalence=0.01) -> None:
         """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
@@ -70,13 +107,16 @@ class BulkReactionAnalyzer():
             None:
         """
 
-        fig = go.Figure()
-        fig.update_layout(width=800, height=800, title="Prevalence by Simulation Step")
-        fig.update_yaxes(title="Prevalence", range=(0, None))
+        step_idxs, step_groups = self._get_step_groups()
+
+        fig = self._get_plotly_fig(
+            "Simulation Step",
+            "Prevalence",
+            "Prevalence by Simulation Step",
+            step_idxs[-1]
+        )
 
         traces = []
-        step_idxs, step_groups = self._get_step_groups()
-        fig.update_xaxes(range=[0, step_idxs[-1]], title="Simulation Step")
         molar_breakdowns = [self.bulk_step_analyzer.molar_fractional_breakdown(sg) for sg in step_groups]
 
         phases = set()
@@ -93,22 +133,25 @@ class BulkReactionAnalyzer():
         for t in filtered_traces:
             fig.add_trace(go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines'))
 
+
         fig.show()
 
-    def plot_molar_phase_amounts(self, min_prevalence=0.01) -> None:
+    def plot_molar_phase_amounts(self, min_prevalence=0.01, xrd_adjust=True) -> None:
         """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
 
         Returns:
             None:
         """
-
-        fig = go.Figure()
-        fig.update_layout(width=800, height=800, title="Absolute Molar Prevalence by Simulation Step")
-        fig.update_yaxes(title="# of Moles", range=[0, None])
-
-        traces = []
         step_idxs, step_groups = self._get_step_groups()
-        fig.update_xaxes(range=[0, step_idxs[-1]], title="Simulation Step")
+
+        fig = self._get_plotly_fig(
+            "Simulation Step",
+            "# of Moles",
+            "Absolute Molar Prevalence by Simulation Step",
+            None
+        )
+        
+        traces = []
         molar_breakdowns = [self.bulk_step_analyzer.molar_breakdown(step_group) for step_group in step_groups]
 
         phases = set()
@@ -117,7 +160,12 @@ class BulkReactionAnalyzer():
             
         for phase in phases:
             if phase is not SolidPhaseSet.FREE_SPACE:
-                ys = [mb.get(phase, 0) for mb in molar_breakdowns]
+                ys = np.array([mb.get(phase, 0) for mb in molar_breakdowns])
+                
+                if xrd_adjust:
+                    comp = Composition(phase)
+                    ys = ys * comp.num_atoms
+                    
                 traces.append((step_idxs, ys, phase))
 
         filtered_traces = [t for t in traces if max(t[1]) > min_prevalence]
@@ -126,6 +174,42 @@ class BulkReactionAnalyzer():
             fig.add_trace(go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines'))
 
         fig.show()
+
+    def plot_phase_volumes(self):
+        """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
+
+        Returns:
+            None:
+        """
+
+        step_idxs, step_groups = self._get_step_groups()
+
+        fig = self._get_plotly_fig(
+            "Simulation Step",
+            "Volume",
+            "Phase Volume by Simulation Step",
+            step_idxs[-1]
+        )
+        
+
+        traces = []
+        vol_breakdowns = [self.bulk_step_analyzer.phase_volumes(step_group) for step_group in step_groups]
+
+        phases = set()
+        for bd in vol_breakdowns:
+            phases = phases.union(set(bd.keys()))
+            
+        for phase in phases:
+            if phase is not SolidPhaseSet.FREE_SPACE:
+                ys = [mb.get(phase, 0) for mb in vol_breakdowns]
+                traces.append((step_idxs, ys, phase))
+
+        filtered_traces = [t for t in traces if max(t[1]) > 0.1]
+
+        for t in filtered_traces:
+            fig.add_trace(go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines'))
+
+        fig.show()        
 
     def as_dict(self):
         return {

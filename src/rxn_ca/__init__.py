@@ -5,7 +5,7 @@ from .core.reaction_controller import ReactionController, NB_HOOD_RADIUS
 from .phases.solid_phase_set import SolidPhaseSet
 from .core.reaction_setup import ReactionSetup
 from .core.heating import HeatingSchedule
-from .reactions.scorers import BasicScore, TammanHuttigScoreSoftplus, score_rxns
+from .reactions.scorers import BasicScore, TammanHuttigScoreErf, score_rxns
 from .reactions.reaction_library import ReactionLibrary
 
 from typing import Dict
@@ -83,7 +83,10 @@ def get_raw_rxns(chemsys: str):
 
 def get_scored_rxns(chemsys: str,
                     heating_sched: HeatingSchedule,
-                    scorer_class: BasicScore = TammanHuttigScoreSoftplus):
+                    scorer_class: BasicScore = TammanHuttigScoreErf,
+                    exclude_pure_elements: bool = False,
+                    exclude_theoretical: bool = True,
+                    exclude_phases: List[str]= []):
     store = AutomatonStore()
     base_rxn_set = store.get_raw_rxns(
         chemsys,
@@ -113,7 +116,19 @@ def get_scored_rxns(chemsys: str,
 
     for t, scorer, rset in zip(new_temps, scorers, rsets):
         scored_rxns: List[ScoredReaction] = score_rxns(rset, scorer, phase_set=lib.phases)
-        rxn_set = ScoredReactionSet(scored_rxns, lib.phases)
+        rxn_set = ScoredReactionSet(scored_rxns, lib.phases, identity_score=3)
+        if exclude_pure_elements:
+            print("Excluding reactions involving pure elements...")
+            rxn_set = rxn_set.exclude_pure_els()
+        
+        if exclude_theoretical:
+            print("Excluding reactions involving theoretical compounds...")
+            rxn_set = rxn_set.exclude_theoretical(lib.phases)
+
+        if len(exclude_phases) > 0:
+            print(f"Excluding reactions including {exclude_phases}")
+            rxn_set = rxn_set.exclude_phases(exclude_phases)
+
         lib.add_rxns_at_temp(rxn_set, t)
 
     return lib

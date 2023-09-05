@@ -1,6 +1,8 @@
 from typing import Any, List, Dict
 
 from ...core.recipe import ReactionRecipe
+from ...core.reaction_result import ReactionResult
+from ...reactions.reaction_library import ReactionLibrary
 
 from .job_types import JobTypes
 from monty.json import MSONable
@@ -12,7 +14,8 @@ import json
 class RxnCAResultDoc(MSONable):
 
     recipe: ReactionRecipe
-    results: List[Dict]
+    results: List[ReactionResult]
+    reaction_library: ReactionLibrary
     job_type: str = JobTypes.RUN_RXN_AUTOMATON.value
 
     @classmethod
@@ -24,14 +27,16 @@ class RxnCAResultDoc(MSONable):
     def from_dict(cls, d):
         return cls(
             recipe = ReactionRecipe.from_dict(d['recipe']),
-            results = d["results"],
+            results = [ReactionResult.from_dict(d) for d in  d["results"]],
+            reaction_library = ReactionLibrary.from_dict(d['reaction_library'])
         )
 
     def as_dict(self):
         d = super().as_dict()
         return { **d, **{
             "recipe": self.recipe.as_dict(),
-            "results": self.results,
+            "results": [r.as_dict() for r in self.results],
+            "reaction_library": self.reaction_library.as_dict()
         }}
 
     def to_file(self, fname):

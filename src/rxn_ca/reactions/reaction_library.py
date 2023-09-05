@@ -2,64 +2,63 @@ from .scored_reaction_set import ScoredReactionSet
 from ..phases.solid_phase_set import SolidPhaseSet
 from rxn_network.reactions.reaction_set import ReactionSet
 
+from monty.json import MSONable
+from dataclasses import dataclass
 
-# from ..core.heating import HeatingSchedule
-# from ..reactions.scored_reaction import ScoredReaction
-# from ..reactions.scorers import score_rxns, TammanHuttigScoreSoftplus
-
-from typing import List
-from tqdm import tqdm
+from rxn_network.reactions.reaction_set import ReactionSet
 
 
-class ReactionLibrary():
+class ReactionLibrary(MSONable):
     """Contains a mapping of temperatures to ScoredReactionSet objects
     which contain reactions scored at the given temperature. Used in multi-stage
     reaction simulations where different stages in the reaction are run at
     different temperatures.
     """
 
-    def __init__(self, rxn_set: ReactionSet):
-        self._lib = {}
-        self.original_rxns = rxn_set
-        self.phases = SolidPhaseSet.from_rxn_set(rxn_set)
+    @classmethod
+    def from_dict(cls, d):
+        library = cls(
+            phases = SolidPhaseSet.from_dict(d['phases'])
+        )
+
+        for t, scored_rxns in d.get('lib').items():
+            library.add_rxns_at_temp(
+                ScoredReactionSet.from_dict(scored_rxns),
+                t
+            )
+
+        return library
+
+
+    def __init__(self, rxn_set: ReactionSet = None, phases: SolidPhaseSet = None):
+        self.lib = {}
+        if phases is None:
+            self.phases = SolidPhaseSet.from_rxn_set(rxn_set)
+        else:
+            self.phases = phases
 
     def add_rxns_at_temp(self, rxns: ScoredReactionSet, temp: int) -> int:
-        self._lib[temp] = rxns
+        self.lib[int(temp)] = rxns
         return temp
     
     def get_rxns_at_temp(self, temp: int) -> ScoredReactionSet:
-        return self._lib[temp]
+        return self.lib[temp]
     
     @property
     def temps(self):
-        return list(self._lib.keys())
+        return list(self.lib.keys())
     
-    # def score_rxns_for_heating_schedule(self,
-    #                                     heating_sched: HeatingSchedule,
-    #                                     score_class = TammanHuttigScoreSoftplus):
-    #     """Returns a ReactionLibrary with reactions calculated at every
-    #     temperature in this heating schedule.
 
-    #     Args:
-    #         rxns (ReactionSet): The ReactionSet containing the reactions to 
-    #         score at each temperature.
+    def as_dict(self):
+        sup = {"@module": self.__class__.__module__, "@class": self.__class__.__name__}
 
-    #     Returns:
-    #         ReactionLibrary:
-    #     """
-    #     sched_temps = heating_sched.all_temps
+        lib = {
+            temp: rset.as_dict()
+            for temp, rset in self.lib.items()
+        }
 
-    #     new_temps = list(set(sched_temps) - set(self.temps))
-    #     if len(new_temps) == 0:
-    #         return
-        
-    #     scorers = [score_class(temp=t, phase_set=self.phases) for t in new_temps]
-
-    #     rsets: List[ReactionSet] = []
-    #     for t in tqdm(new_temps, desc="Calculating reaction energies at temperatures..."):
-    #         rsets.append(self.original_rxns.set_new_temperature(t))
-
-    #     for t, scorer, rset in zip(new_temps, scorers, rsets):
-    #         scored_rxns: List[ScoredReaction] = score_rxns(rset, scorer, phase_set=self.phases)
-    #         rxn_set = ScoredReactionSet(scored_rxns, self.phases)
-    #         self.add_rxns_at_temp(rxn_set, t)
+        return {
+            **sup,
+            "phases": self.phases.as_dict(),
+            "lib": lib,
+        }

@@ -11,15 +11,23 @@ from dataclasses import dataclass
 
 _heating = "_heating"
 _rxns = "rxns"
+_recipe = "recipe"
 
-def get_result(start):
+def get_result(_):
+    sim = setup(
+        mp_globals[_rxns].phases,
+        mp_globals[_recipe].reactant_amounts,
+        mp_globals[_recipe].simulation_size,
+        particle_size=mp_globals[_recipe].particle_size
+    )
     try:
         return run_multi(
-            start,
+            sim,
             mp_globals[_rxns],
             mp_globals[_heating]
         )
-    except:
+    except Exception as e:
+        print(e)
         print("Run failed!")
         return None
 
@@ -38,21 +46,17 @@ class ParallelRxnMaker(Maker):
         rxn_lib = get_scored_rxns(
             recipe.chem_sys,
             heating_sched=recipe.heating_schedule,
+            exclude_phases=recipe.exclude_phases
         )
 
         print()
         print()
         print()
 
-        print("================= SETTING UP SIMULATION =================")
+        # print("================= SETTING UP SIMULATION =================")
 
 
-        sim = setup(
-            rxn_lib.phases,
-            recipe.reactant_amounts,
-            recipe.simulation_size,
-            particle_size=recipe.particle_size
-        )
+
 
 
         print(f'================= RUNNING SIMULATION w/ {recipe.num_realizations} REALIZATIONS =================')
@@ -62,21 +66,21 @@ class ParallelRxnMaker(Maker):
 
         mp_globals = {
             _heating: recipe.heating_schedule,
-            _rxns: rxn_lib
+            _rxns: rxn_lib,
+            _recipe: recipe
         }
 
 
         with mp.get_context("fork").Pool(recipe.num_realizations) as pool:
-            results = pool.map(get_result, [sim for _ in range(recipe.num_realizations)])
+            results = pool.map(get_result, [_ for _ in range(recipe.num_realizations)])
 
         good_results = [res for res in results if res is not None]
         print(f'{len(good_results)} results achieved out of {len(results)}')
-
-        jserializable = [res.as_dict() for res in results if res is not None]
-        
+  
         result_doc = RxnCAResultDoc(
             recipe=recipe,
-            results=jserializable
+            results=good_results,
+            reaction_library=rxn_lib
         )
 
         if output_fname is not None:

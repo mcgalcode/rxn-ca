@@ -1,5 +1,4 @@
 from .reaction_result import ReactionResult
-from .reaction_simulation import ReactionSimulation
 from .reaction_controller import ReactionController
 from .heating import HeatingSchedule
 from ..reactions.reaction_library import ReactionLibrary
@@ -75,13 +74,9 @@ def get_new_starting_state(prev_result: ReactionResult, new_updates: Dict):
 
 def concatenate_results(results: List[ReactionResult]):
     starting_state = results[0].initial_state
-    heating_schedule = results[0].heating_schedule
-    rxn_set = results[0].rxn_set
 
     new_result = ReactionResult(
-        starting_state,
-        rxn_set,
-        heating_schedule=heating_schedule
+        starting_state
     )
 
     for res in results:

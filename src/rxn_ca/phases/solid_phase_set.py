@@ -15,7 +15,8 @@ class SolidPhaseSet(PhaseSet):
         return cls(
             set_dict["phases"],
             set_dict["volumes"],
-            set_dict["melting_points"]
+            set_dict["melting_points"],
+            set_dict["experimentally_observed"]
         )
     
     @classmethod
@@ -23,12 +24,14 @@ class SolidPhaseSet(PhaseSet):
         all_phases = list(set([e.composition.reduced_formula for e in rxn_set.entries]))
         vols = get_phase_vols(all_phases)
         mps = get_melting_points(all_phases)
-        return cls(all_phases, volumes=vols, melting_points=mps)
+        obs = get_experimentally_observed(all_phases)
+        return cls(all_phases, volumes=vols, melting_points=mps, experimentally_observed=obs)
 
-    def __init__(self, phases, volumes, melting_points = None):
+    def __init__(self, phases, volumes, melting_points = None, experimentally_observed = None):
         phases = phases + [SolidPhaseSet.FREE_SPACE]
         self.volumes = volumes
         self.melting_points = melting_points
+        self.experimentally_observed = experimentally_observed
         super().__init__(phases)
 
     def get_vol(self, phase):
@@ -36,6 +39,12 @@ class SolidPhaseSet(PhaseSet):
     
     def get_melting_point(self, phase):
         return self.melting_points.get(phase)
+    
+    def is_theoretical(self, phase):
+        return not self.experimentally_observed[phase]
+
+    def get_theoretical_phases(self):
+        return [phase for phase in self.phases if phase != SolidPhaseSet.FREE_SPACE and self.is_theoretical(phase)]
 
     def as_dict(self):
         return {
@@ -43,7 +52,8 @@ class SolidPhaseSet(PhaseSet):
             "@class": self.__class__.__name__,
             "phases": self.phases,
             "volumes": self.volumes,
-            "melting_points": self.melting_points
+            "melting_points": self.melting_points,
+            "experimentally_observed": self.experimentally_observed
         }
 
 def get_phase_vols(phases):
@@ -66,6 +76,24 @@ def get_phase_vols(phases):
                 min_energies[red_form] = item.energy_above_hull
 
     return volumes
+
+def get_experimentally_observed(phases):
+    experimentally_observed = {}
+
+    with MPRester() as mpr:
+        
+        res = mpr.summary.search(
+            formula = phases,
+            fields=["theoretical", "composition"]
+        )
+        print(len(res))
+        for item in res:
+            form = item.composition.reduced_formula
+            prev = experimentally_observed.get(form)
+            if not prev:
+                experimentally_observed[form] = not item.theoretical
+    
+    return experimentally_observed
 
 def get_melting_points(phases):
     mp_json = pkg_resources.resource_filename("rxn_ca", "reactions/melting_points_df_08_08_23.json")

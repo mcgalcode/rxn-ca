@@ -25,6 +25,9 @@ def huttig_score_exp(t_tm_ratio):
 
 def huttig_score_softplus(t_tm_ratio):
     return math.log(1 + math.exp(8 * (t_tm_ratio - 0.33)))
+
+def erf(x):
+    return 0.5 * (1 + math.erf(-35 * (x + 0.05)))
          
 class BasicScore(ABC):
 
@@ -48,7 +51,9 @@ class TammanHuttigScoreExponential(BasicScore):
         min_mp = min(mps)
 
         # Softplus adjustment
-        delta_g_adjustment = softplus(-rxn.energy_per_atom)
+        # delta_g_adjustment = softplus(-rxn.energy_per_atom)
+        delta_g_adjustment = softplus(-(2*rxn.energy_per_atom + 0.8))
+        
 
         if len(non_gasses) < len(phases):
             # Huttig
@@ -69,6 +74,28 @@ class TammanHuttigScoreSoftplus(BasicScore):
 
         # Softplus adjustment
         delta_g_adjustment = softplus(-rxn.energy_per_atom)
+        delta_g_adjustment = softplus(-(2*rxn.energy_per_atom + 0.8))
+
+        if len(non_gasses) < len(phases):
+            # Huttig
+            return huttig_score_softplus(self.temp / min_mp) * delta_g_adjustment
+        else:
+            # Tamman
+            return tamman_score_softplus(self.temp / min_mp) * delta_g_adjustment
+
+
+class TammanHuttigScoreErf(BasicScore):
+    # https://en.wikipedia.org/wiki/Tammann_and_H%C3%BCttig_temperatures
+
+
+    def score(self, rxn: ComputedReaction):
+        phases = [c.reduced_formula for c in rxn.reactants]
+        non_gasses = [p for p in phases if p not in DEFAULT_GASES]
+        mps = [self.phases.get_melting_point(p) for p in non_gasses]
+        min_mp = min(mps)
+
+        # Softplus adjustment
+        delta_g_adjustment = erf(rxn.energy_per_atom)
 
         if len(non_gasses) < len(phases):
             # Huttig

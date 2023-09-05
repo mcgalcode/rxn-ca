@@ -83,11 +83,8 @@ class HeatingSchedule(MSONable):
             tallied += step.duration
             if tallied > step_idx:
                 return step.temp
-    
-    def plot(self):
-        fig, axs = plt.subplots()
-        total_length = sum([s.duration for s in self.steps])
-
+            
+    def get_xy_for_plot(self):
         curr_x = 0
         xs = []
         ys = []
@@ -97,10 +94,20 @@ class HeatingSchedule(MSONable):
             xs.append(curr_x)
             ys.append(step.temp)
             curr_x += step.duration
+            xs.append(curr_x)
+            ys.append(step.temp)            
 
         if len(self.steps) == 1:
             xs.append(self.steps[0].duration)
             ys.append(self.steps[0].temp)
+
+        return xs, ys        
+    
+    def plot(self):
+        fig, axs = plt.subplots()
+        total_length = sum([s.duration for s in self.steps])
+
+        xs, ys = self.get_xy_for_plot()
 
         axs.plot(xs, ys)
         axs.hlines(298, -100, total_length + 100, color='r')
