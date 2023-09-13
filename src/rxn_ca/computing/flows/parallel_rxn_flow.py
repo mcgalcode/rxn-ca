@@ -40,13 +40,26 @@ class ParallelRxnMaker(Maker):
     def make(self,
              recipe: ReactionRecipe,
              output_fname: str = None):
+        
+        print('\n\n\n')
+        print(
+        "██╗░░░░░███████╗████████╗  ██╗████████╗  ░█████╗░░█████╗░░█████╗░██╗░░██\n"
+        "██║░░░░░██╔════╝╚══██╔══╝  ██║╚══██╔══╝  ██╔══██╗██╔══██╗██╔══██╗██║░██╔╝\n"
+        "██║░░░░░█████╗░░░░░██║░░░  ██║░░░██║░░░  ██║░░╚═╝██║░░██║██║░░██║█████═╝░\n"
+        "██║░░░░░██╔══╝░░░░░██║░░░  ██║░░░██║░░░  ██║░░██╗██║░░██║██║░░██║██╔═██╗░\n"
+        "███████╗███████╗░░░██║░░░  ██║░░░██║░░░  ╚█████╔╝╚█████╔╝╚█████╔╝██║░╚██╗\n"
+        "╚══════╝╚══════╝░░░╚═╝░░░  ╚═╝░░░╚═╝░░░  ░╚════╝░░╚════╝░░╚════╝░╚═╝░░╚═╝\n")
 
+        print('\n\n\n')
 
         print("================= RETRIEVING AND SCORING REACTIONS =================")
+
         rxn_lib = get_scored_rxns(
             recipe.chem_sys,
             heating_sched=recipe.heating_schedule,
-            exclude_phases=recipe.exclude_phases
+            exclude_phases=recipe.exclude_phases,
+            exclude_theoretical=recipe.exclude_theoretical,
+            scorer_class=recipe.get_score_class()
         )
 
         print()

@@ -4,8 +4,6 @@ from jobflow.settings import JobflowSettings
 from ..schemas.job_types import JobTypes
 from .functions import format_chem_sys
 from ...core.reaction_result import ReactionResult
-from ...reactions.scored_reaction_set import ScoredReactionSet
-from ...reactions import score_rxns
 
 
 class AutomatonStore():
@@ -39,7 +37,7 @@ class AutomatonStore():
     def delete_rxn_sets(self, chem_sys):
         result = self.store.remove_docs({
             "output.job_type": JobTypes.ENUMERATE_RXNS.value,
-            "output.chem_sys": chem_sys,
+            "output.chem_sys": format_chem_sys(chem_sys),
         })
         return result
 

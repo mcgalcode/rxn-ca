@@ -1,24 +1,29 @@
 from rxn_ca import AutomatonStore, enumerate_rxns
 
 chem_syses = [
-    "Ba-Cl-Na-Ti-O",
-    "Ba-S-Na-Ti-O",
-    "Ba-Ti-O",
-    "Ba-Ti-O-H",
-    "Ba-Ti-O-S",
-    "Fe-Si-S",
-    "Li-Mn-O-H",
-    "Li-Mn-Ti-F-C-O",
-    "Y-Ba-Cu-O",
-    "Y-Mn-C-Cl-O-Li",
-    "Cl-Li-Mn-O-Y",
-    "Yb-Ru-Sn",
-    "Y-Mn-O",
-    "Bi-Fe-O",
-    "Co-Cl-H-O",
-    "Ca-S-O-H",
-    "Cu-O"
+    # "Ba-Cl-Na-Ti-O",
+    # "Ba-S-Na-Ti-O",
+    # "Ba-Ti-O",
+    # "Ba-Ti-O-H",
+    # "Ba-Ti-O-S",
+    # "Fe-Si-S",
+    # "Li-Mn-O-H",
+    # "Li-Mn-Ti-F-C-O",
+    # "Y-Ba-Cu-O",
+    # "Y-Mn-C-Cl-O-Li",
+    # "Cl-Li-Mn-O-Y",
+    # "Yb-Ru-Sn",
+    # "Bi-Fe-O",
+    # "Co-Cl-H-O",
+    # "Ca-S-O-H",
+    # "Cu-O",
+    "Mg-Al-O"
 ]
+
+formulas_to_include = {
+    "Ba-S-Na-Ti-O": ["Na2TiO3"],
+    "Ba-Cl-Na-Ti-O": ["Na2TiO3", "BaCl2"],
+}
 
 special_cutoffs = {
     "Li-Mn-Ti-F-C-O": [0.01],
@@ -44,7 +49,8 @@ extra_temps = {
     "Bi-Fe-O": full_extras,
     "Co-Cl-H-O": full_extras,
     "Ca-S-O-H": full_extras,
-    "Cu-O": full_extras
+    "Cu-O": full_extras,
+    "Mg-Al-O": full_extras
 }
 
 store = AutomatonStore()
@@ -65,4 +71,5 @@ for sys in chem_syses:
         enumerate_rxns(sys,
                        stability_cutoff=cutoff,
                        base_temp=300,
-                       other_temps=extra_temps.get(sys))
+                       other_temps=extra_temps.get(sys),
+                       formulas_to_include=formulas_to_include.get(sys, []))
