@@ -5,8 +5,8 @@ from pylattica.core import SimulationState
 from pylattica.discrete import DiscreteStepAnalyzer
 from pylattica.discrete.state_constants import DISCRETE_OCCUPANCY
 
-from ..core import SolidPhaseSet
-from ..core.reaction_setup import VOLUME
+from ..phases.solid_phase_set import SolidPhaseSet
+from ..core.constants import VOLUME
 
 
 class ReactionStepAnalyzer(DiscreteStepAnalyzer):
@@ -19,10 +19,13 @@ class ReactionStepAnalyzer(DiscreteStepAnalyzer):
         if phases is None:
             phases = self.phases_present(step)
         
-        moles = self.molar_fractional_breakdown(step)
+        moles = self.molar_breakdown(step)
+        vol = self.phase_volumes(step)
 
         for p in phases:
             print(f'{p} moles: ', moles[p])
+            print(f'{p} vol: {vol[p]}')
+            print(f'{p} cells: {self.cell_count(step, p)}\n')
 
         denom = min([moles[p] for p in phases])
         for p in phases:

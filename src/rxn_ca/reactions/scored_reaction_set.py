@@ -1,9 +1,14 @@
-from typing import Dict
+from typing import List
 
 import json
 
 from .scored_reaction import ScoredReaction
-from ..core.solid_phase_set import SolidPhaseSet
+from ..phases.solid_phase_set import SolidPhaseSet
+from ..phases.gasses import DEFAULT_GASES
+
+from pymatgen.core.composition import Composition
+
+import matplotlib.pyplot as plt
 
 class ScoredReactionSet():
     """A set of ScoredReactions that capture the events that can occur during a simulation. Typically
@@ -18,13 +23,11 @@ class ScoredReactionSet():
 
     @classmethod
     def from_dict(cls, rxn_set_dict):
-        phase_set = SolidPhaseSet.from_dict(rxn_set_dict["phases"])
         return cls(
             [ScoredReaction.from_dict(r) for r in rxn_set_dict["reactions"]],
-            phase_set
         )
 
-    def __init__(self, reactions: list[ScoredReaction], phase_set: SolidPhaseSet):
+    def __init__(self, reactions: list[ScoredReaction], phase_set: SolidPhaseSet = None, identity_score = 1):
         """Initializes a SolidReactionSet object. Requires a list of possible reactions
         and the elements which should be considered available in the atmosphere of the
         simulation.
@@ -33,22 +36,22 @@ class ScoredReactionSet():
             reactions (list[Reaction]):
         """
         self.reactant_map = {}
-        self.reactions = []
+        self.reactions: List[ScoredReaction] = []
         self.rxn_map = {}
-        self.phases = phase_set
         # Replace strength of identity reaction with the depth of the hull its in
 
         for r in reactions:
             self.add_rxn(r)
 
-        for phase in self.phases.phases:
-            if phase is not SolidPhaseSet.FREE_SPACE:
-                self_rxn = ScoredReaction.self_reaction(phase, strength = 0.1)
-                existing = self.get_reaction([phase])
-                if existing is not None and not existing.is_identity:
-                    self.add_rxn(self_rxn)
-                elif existing is None:
-                    self.add_rxn(self_rxn)
+        if phase_set is not None:
+            for phase in phase_set.phases:
+                if phase not in DEFAULT_GASES and phase is not SolidPhaseSet.FREE_SPACE:
+                    self_rxn = ScoredReaction.self_reaction(phase, strength = identity_score)
+                    existing = self.get_reactions([phase])
+                    if len(existing) > 0 and not any(map(lambda rxn: rxn.is_identity, existing)):
+                        self.add_rxn(self_rxn)
+                    elif len(existing) == 0:
+                        self.add_rxn(self_rxn)
 
     def rescore(self, scorer):
         rescored = [rxn.rescore(scorer) for rxn in self.reactions if not rxn.is_identity]
@@ -56,11 +59,56 @@ class ScoredReactionSet():
         return ScoredReactionSet(rescored, skip_vols)
 
     def add_rxn(self, rxn: ScoredReaction) -> None:
-        self.reactant_map[frozenset(rxn.reactants)] = rxn
+        reactant_set = frozenset(rxn.reactants)
+        if self.reactant_map.get(reactant_set) is None:
+            self.reactant_map[reactant_set] = [rxn]
+        else:
+            self.reactant_map[reactant_set].append(rxn)
+            self.reactant_map[reactant_set] = sorted(self.reactant_map[reactant_set], key = lambda rxn: rxn.competitiveness, reverse = True)
         self.rxn_map[str(rxn)] = rxn
         self.reactions.append(rxn)
 
-    def get_reaction(self, reactants: list[str]) -> ScoredReaction:
+    def exclude_pure_els(self):
+        filtered = ScoredReactionSet([])
+        for r in self.reactions:
+            contains_element = False
+            for p in r.all_phases:
+                if len(Composition(p).elements) == 1:
+                    contains_element = True
+            if not contains_element:
+                filtered.add_rxn(r)
+        
+        return filtered
+
+    def exclude_theoretical(self, phase_set: SolidPhaseSet):
+        filtered = ScoredReactionSet([])
+        theoretical_phases = phase_set.get_theoretical_phases()
+        for r in self.reactions:
+            containts_theoretical = False
+            for p in r.all_phases:
+                if p in theoretical_phases:
+                    containts_theoretical = True
+
+            if not containts_theoretical:
+                filtered.add_rxn(r)
+        
+        return filtered
+
+    def exclude_phases(self, phase_list: List[str]):
+        filtered = ScoredReactionSet([])
+
+        for r in self.reactions:
+            contains_exclude = False
+            for p in r.all_phases:
+                if p in phase_list:
+                    contains_exclude = True
+
+            if not contains_exclude:
+                filtered.add_rxn(r)
+        
+        return filtered
+
+    def get_reactions(self, reactants: list[str]) -> ScoredReaction:
         """Given a list of string reaction names, returns a reaction that uses exactly those
         reactants as precursors.
 
@@ -70,7 +118,7 @@ class ScoredReactionSet():
         Returns:
             Reaction: The matching reaction, if it exists, otherwise None.
         """
-        return self.reactant_map.get(frozenset(reactants), None)
+        return self.reactant_map.get(frozenset(reactants), [])
 
     def get_rxn_by_str(self, rxn_str: str) -> ScoredReaction:
         """Retrieves a reaction from this set by it's serialized string form
@@ -109,11 +157,24 @@ class ScoredReactionSet():
             list[Reaction]: The matching reactions.
         """
         return [rxn for rxn in self.reactions if set(rxn.reactants).issuperset(reactants)]
+    
+    def plot_energies(self, bins=300):
+        es = [r.energy_per_atom for r in self.reactions]
+        plt.title("Reaction Energies")
+        plt.xlabel("Delta G (eV/atom)")
+        plt.ylabel("Count")
+        plt.hist(es, bins=bins)
+
+    def plot_scores(self, bins=300):
+        scores = [r.competitiveness for r in self.reactions]
+        plt.title("Reaction Scores")
+        plt.xlabel("Score")
+        plt.ylabel("Count")        
+        plt.hist(scores, bins=bins)
 
     def as_dict(self):
         return {
             "reactions": [r.as_dict() for r in self.reactions],
-            "phases": self.phases,
             "@module": self.__class__.__module__,
             "@class": self.__class__.__name__,
         }

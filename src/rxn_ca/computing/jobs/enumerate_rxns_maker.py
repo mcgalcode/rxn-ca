@@ -3,6 +3,8 @@ from jobflow.core.job import job
 
 from rxn_network.enumerators.minimize import MinimizeGibbsEnumerator
 from rxn_network.jobs.core import GetEntrySetMaker, ReactionEnumerationMaker
+from rxn_network.entries.entry_set import GibbsEntrySet
+from rxn_network.reactions.reaction_set import ReactionSet
 
 from dataclasses import dataclass
 
@@ -20,16 +22,19 @@ class EnumerateRxnsMaker(Maker):
     @job
     def make(self,
              chem_sys: str,
-             temp: int,
+             temp: int = 300,
              stability_cutoff: float = 0.1,
              open_el: str = None,
              chempot: float = None,
-             mp_api_key: str = None) -> EnumeratedRxnsModel:
+             mp_api_key: str = None,
+             formulas_to_include: dict = []) -> EnumeratedRxnsModel:
 
+        # First we enumerate entries
         entry_set_maker = GetEntrySetMaker(
             temperature=temp,
             e_above_hull=stability_cutoff,
-            MP_API_KEY=mp_api_key
+            MP_API_KEY=mp_api_key,
+            formulas_to_include=formulas_to_include
         )
 
 
@@ -46,6 +51,7 @@ class EnumerateRxnsMaker(Maker):
         # potential way to use the grand potential enumerator is to run it at a variety of chemical potentials,
         # then add all the resulting reaction sets to gether, and set the chempot to the desired value for all of them
         # can calculate oxygen chempots with ktlnPO2 / 2
+        print(f'Using {len(eset.entries)} entries')
 
         eset = entry_set_maker.make.original(entry_set_maker, chem_sys)
         enumerator = MinimizeGibbsEnumerator()
@@ -53,7 +59,6 @@ class EnumerateRxnsMaker(Maker):
         enumerators = [enumerator]
         entries = eset.entries
         rxns = enumeration_maker.make.original(enumeration_maker, enumerators, entries)
-
 
         result_model = EnumeratedRxnsModel.from_obj(
             rxns.rxns,

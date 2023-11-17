@@ -1,17 +1,44 @@
-from typing import Any
-from pydantic import BaseModel, Field
+from typing import Any, List, Dict
 
-from ..utils.functions import format_chem_sys
+from ...core.recipe import ReactionRecipe
+from ...core.reaction_result import ReactionResult
+from ...reactions.reaction_library import ReactionLibrary
+
 from .job_types import JobTypes
+from monty.json import MSONable
+from dataclasses import dataclass
 
-class RxnCAResultModel(BaseModel):
+import json
 
-    task_id: str = Field(description="The ID of this result")
-    chem_sys: str = Field(description="The chemical system used")
-    temperature: int = Field(description="The temperature of the simulation")
-    result: dict = Field(description="The serialized result object")
-    job_type: str = Field(default=JobTypes.RUN_RXN_AUTOMATON.value)
+@dataclass
+class RxnCAResultDoc(MSONable):
 
-    def __init__(self, **data: Any):
-        super().__init__(**data)
-        self.chem_sys = format_chem_sys(self.chem_sys)
+    recipe: ReactionRecipe
+    results: List[ReactionResult]
+    reaction_library: ReactionLibrary
+    job_type: str = JobTypes.RUN_RXN_AUTOMATON.value
+
+    @classmethod
+    def from_file(cls, fname):
+        with open(fname, "rb") as f:
+            return cls.from_dict(json.loads(f.read()))
+    
+    @classmethod
+    def from_dict(cls, d):
+        return cls(
+            recipe = ReactionRecipe.from_dict(d['recipe']),
+            results = [ReactionResult.from_dict(d) for d in  d["results"]],
+            reaction_library = ReactionLibrary.from_dict(d['reaction_library'])
+        )
+
+    def as_dict(self):
+        d = super().as_dict()
+        return { **d, **{
+            "recipe": self.recipe.as_dict(),
+            "results": [r.as_dict() for r in self.results],
+            "reaction_library": self.reaction_library.as_dict()
+        }}
+
+    def to_file(self, fname):
+        with open(fname, "w+") as f:
+            f.write(json.dumps(self.as_dict()))

@@ -2,10 +2,12 @@ from typing import Dict, List
 import numpy as np
 import random
 
-from .solid_phase_set import SolidPhaseSet
+from pylattica.core.simulation import Simulation
+
+from ..phases.solid_phase_set import SolidPhaseSet
 from ..analysis.reaction_step_analyzer import ReactionStepAnalyzer
+from .constants import VOLUME
 from pylattica.square_grid import DiscreteGridSetup, PseudoHexagonalNeighborhoodBuilder2D, PseudoHexagonalNeighborhoodBuilder3D, GrowthSetup
-from pylattica.models.growth import GrowthController
 from pylattica.core import Runner, SimulationState, Simulation
 from pylattica.core import BasicController
 from pylattica.core.neighborhood_builders import NeighborhoodBuilder
@@ -14,8 +16,6 @@ from pylattica.core.simulation_state import SimulationState
 from pylattica.discrete import PhaseSet
 from pylattica.discrete.state_constants import DISCRETE_OCCUPANCY, VACANT
 from pylattica.square_grid.neighborhoods import MooreNbHoodBuilder
-
-VOLUME = "VOLUME"
 
 default_ratios = [1, 1, 1]
 
@@ -60,7 +60,7 @@ class ReactionSetupController(BasicController):
                 max_spec = None
                 molar_bdown = self.analyzer.phase_volume_fractions(prev_state)
                 for phase, count in counts.items():
-                    if count > max_count and (molar_bdown[phase] <= self.desired_phase_vols[phase] or random.random() < 0.5):
+                    if count > max_count and (molar_bdown[phase] <= self.desired_phase_vols[phase] or random.random() < 0.8):
                         max_spec = phase
                         max_count = count
 
@@ -136,15 +136,20 @@ class ReactionSetup(DiscreteGridSetup):
         empty_count = analyzer.cell_count(simulation.state, self.phase_set.FREE_SPACE)
         while empty_count > 0:
             print(f'Filling remaining {empty_count} vacant cells...')
-            print(analyzer.molar_fractional_breakdown(simulation.state))
             runner = Runner(is_async=True)
-            res = runner.run(simulation.state, controller, num_steps=2*size**3, structure=simulation.structure)
+            res = runner.run(simulation.state, controller, num_steps=int(size**3 / 2), structure=simulation.structure)
             simulation = Simulation(res.last_step, simulation.structure)
             empty_count = analyzer.cell_count(simulation.state, self.phase_set.FREE_SPACE)
 
 
         return simulation
 
+    def setup_interface(self, size: int, p1: str, p2: str) -> Simulation:
+        simulation = super().setup_interface(size, p1, p2)
+        for site_id in simulation.state.site_ids():
+            simulation.state.set_site_state(site_id, { VOLUME: 1.0 })
+        return simulation
+    
     def setup_random_sites(self,
         size: int,
         num_sites_desired: int,
