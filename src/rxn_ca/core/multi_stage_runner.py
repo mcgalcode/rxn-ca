@@ -3,7 +3,7 @@ from .reaction_controller import ReactionController
 from .heating import HeatingSchedule
 from ..reactions.reaction_library import ReactionLibrary
 
-from pylattica.core import Runner, Simulation
+from pylattica.core import AsynchronousRunner, Simulation
 from pylattica.core.constants import GENERAL, SITES
 
 from .constants import TEMPERATURE
@@ -18,7 +18,7 @@ def run_multi(simulation: Simulation,
               verbose=True,
               inertia=1,
               open_gas=None):
-    runner = Runner(is_async=True)
+    runner = AsynchronousRunner()
 
     open_species = {}
     if open_gas is not None:
@@ -28,11 +28,9 @@ def run_multi(simulation: Simulation,
 
     controller = ReactionController(
         simulation.structure,
-        phases=reaction_lib.phases,
         free_species=free_species,
         inertia=inertia,
         open_species=open_species,
-        heating_schedule=heating_schedule
     )
     
     results = []
@@ -56,7 +54,6 @@ def run_multi(simulation: Simulation,
             starting_state,
             controller,
             step.duration,
-            structure=simulation.structure,
             verbose=verbose
         )
 

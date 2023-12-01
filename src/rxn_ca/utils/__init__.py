@@ -7,7 +7,7 @@ from ..reactions import ScoredReactionSet
 from ..computing import AutomatonStore, enumerate_flow
 
 from jobflow.managers.local import run_locally
-from pylattica.core import Runner
+from pylattica.core import AsynchronousRunner
 
 import typing
 
@@ -24,7 +24,7 @@ def setup(rxns: ScoredReactionSet, phases: Dict, size: int, num_particles: int, 
     return ReactionSimulation(rxns, sim)
 
 def run(simulation: ReactionSimulation, num_steps: int, free_species=None, verbose=True, inertia=0):
-    runner = Runner(is_async=True)
+    runner = AsynchronousRunner()
     print(f'Running simulation with inertia {inertia}')
     controller = ReactionController(
         simulation.structure,
@@ -36,7 +36,6 @@ def run(simulation: ReactionSimulation, num_steps: int, free_species=None, verbo
         simulation.state,
         controller,
         num_steps,
-        structure=simulation.structure,
         verbose=verbose
     )
     return result
@@ -48,6 +47,7 @@ def enumerate_rxns(chem_sys,
                    chempot=None,
                    formulas_to_include: typing.List = []
     ):
+    
     store = AutomatonStore()
     flow = enumerate_flow(
         chem_sys,

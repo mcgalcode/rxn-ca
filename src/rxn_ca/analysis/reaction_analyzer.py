@@ -17,44 +17,16 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
     """
 
 
-    def __init__(self, result: ReactionResult):
+    def __init__(self, result: ReactionResult, phases: SolidPhaseSet, heating_schedule):
         """Initializes a ReactionResult with the reaction set used in the simulation
 
         Args:
             rxn_set (ScoredReactionSet):
         """
-        self.rxn_set: ScoredReactionSet = result.rxn_set
-        self.phases = self.rxn_set.phases
-        self.heating_schedule = result.heating_schedule
-        self.step_analyzer = ReactionStepAnalyzer(self.rxn_set.phases)
+        self.phases = phases
+        self.heating_schedule = heating_schedule
+        self.step_analyzer = ReactionStepAnalyzer(phases)
         super().__init__(result)
-
-    def get_choices_at(self, step_no: int, top: int = None, exclude_ids = True) -> None:
-        data = self.step_analyzer.get_reaction_choices(self.result.get_step(step_no))
-        names = list(data.keys())
-        values = list(data.values())
-        zipped = list(zip(names, values))
-        zipped.sort(key = lambda x: -x[1])
-
-        if exclude_ids:
-            filtered = list(filter(lambda item: not self.rxn_set.get_rxn_by_str(item[0]).is_identity, zipped))
-        else:
-            filtered = zipped
-
-        if top is None:
-            top = len(filtered)
-
-        return filtered[0:top]
-
-    def show_choices_at(self, step_no: int, top: int = None, exclude_ids = True) -> None:
-        choices = self.get_choices_at(step_no, top, exclude_ids)
-        for choice in choices:
-            print(choice[0])
-            print(f'Competitiveness: {self.rxn_set.get_rxn_by_str(choice[0]).competitiveness}')
-            if self.rxn_set.get_rxn_by_str(choice[0]).original_rxn is not None:
-                print(f'eV / atom: {self.rxn_set.get_rxn_by_str(choice[0]).original_rxn.energy_per_atom}')
-            print(f'Count: {choice[1]}')
-            print('--------------')
 
     def plot_choices_at(self, step_no: int, top: int = None, exclude_ids = True) -> None:
         choices = self.get_choices_at(step_no, top, exclude_ids)
@@ -229,6 +201,5 @@ class ReactionAnalyzer(DiscreteResultAnalyzer):
             "@module": self.__class__.__module__,
             "@class": self.__class__.__name__,
             "steps": [s.as_dict() for s in self.steps],
-            "rxn_set": self.rxn_set.as_dict(),
             "phase_set": self.phase_set.as_dict()
         }

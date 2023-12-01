@@ -43,6 +43,8 @@ class ScoredReactionSet():
         for r in reactions:
             self.add_rxn(r)
 
+        self.phases = phase_set
+
         if phase_set is not None:
             for phase in phase_set.phases:
                 if phase not in DEFAULT_GASES and phase is not SolidPhaseSet.FREE_SPACE:

@@ -14,6 +14,8 @@ from typing import Tuple, List
 
 from pymatgen.core.composition import Composition
 import numpy as np
+
+OTHERS = "others"
 class BulkReactionAnalyzer():
     """A class that stores the result of running a simulation. Keeps track of all
     the steps that the simulation proceeded through, and the set of reactions that
@@ -157,7 +159,7 @@ class BulkReactionAnalyzer():
             phases = set()
             for bd in molar_breakdowns:
                 phases = phases.union(set(bd.keys()))
-            
+        
         for phase in phases:
             if phase is not SolidPhaseSet.FREE_SPACE:
                 ys = [mb.get(phase, 0) for mb in molar_breakdowns]
@@ -177,7 +179,7 @@ class BulkReactionAnalyzer():
         """
 
         traces = self.get_mole_fraction_traces(min_prevalence)
-        max_x = traces[0].x[-1]
+        max_x = max(set().union([t.x for t in traces]))
 
         fig = self._get_plotly_fig(
             "Simulation Step",
@@ -191,7 +193,13 @@ class BulkReactionAnalyzer():
 
         return fig
     
-    def get_molar_phase_traces(self, min_prevalence=0.01, xrd_adjust=True, phases=None) -> None:
+    def get_steps(self, step_no):
+        return [r.get_step(step_no) for r in self.results]
+    
+    def get_last_step_group(self):
+        return [r.last_step for r in self.results]
+
+    def get_molar_phase_traces(self, min_prevalence=0.01, xrd_adjust=True, phases=None, legend="legend1") -> None:
         """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
 
         Returns:
@@ -219,7 +227,7 @@ class BulkReactionAnalyzer():
 
         filtered_traces = [t for t in traces if max(t[1]) > min_prevalence]
 
-        go_traces = [go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines', line=dict(width=4)) for t in filtered_traces]
+        go_traces = [go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines', line=dict(width=4), legend=legend) for t in filtered_traces]
         return go_traces
     
 
@@ -250,11 +258,60 @@ class BulkReactionAnalyzer():
         ys = np.array([mb.get(phase_name, 0) for mb in molar_breakdowns])
             
         if xrd_adjust:
-            comp = Composition(phase)
+            comp = Composition(phase_name)
             ys = ys * comp.num_atoms
 
         return ys
+    
+    def plot_groups(self, group_defs):
+        step_idxs, step_groups = self._get_step_groups()
 
+        traces = []
+        molar_breakdowns = [self.bulk_step_analyzer.molar_fractional_breakdown(sg) for sg in step_groups]
+
+
+        phases = set()
+        for bd in molar_breakdowns:
+            phases = phases.union(set(bd.keys()))
+
+        traces = {}
+
+        for group_name, group_members in group_defs.items():
+            group_trace = np.array([0 for _ in molar_breakdowns])
+
+            for phase in phases:
+                if phase in group_members and phase is not SolidPhaseSet.FREE_SPACE:
+                    ys = [mb.get(phase, 0) for mb in molar_breakdowns]
+                    group_trace = group_trace + ys
+            
+            traces[group_name] = group_trace
+
+        go_traces = []
+
+        for trace_name, trace_data in traces.items():
+            tr = go.Scatter(
+                name=trace_name, 
+                x=step_idxs,
+                y=trace_data,
+                mode='lines',
+                line=dict(width=4),
+                stackgroup='one'
+            )
+
+            go_traces.append(tr)
+
+        fig = self._get_plotly_fig(
+            "Simulation Step",
+            "# of Moles",
+            "Absolute Molar Prevalence by Simulation Step",
+            None
+        )
+
+        fig.add_traces(go_traces)
+
+        fig.show()
+        
+        
 
     def plot_phase_volumes(self):
         """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
@@ -272,7 +329,6 @@ class BulkReactionAnalyzer():
             step_idxs[-1]
         )
         
-
         traces = []
         vol_breakdowns = [self.bulk_step_analyzer.phase_volumes(step_group) for step_group in step_groups]
 
