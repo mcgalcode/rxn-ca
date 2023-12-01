@@ -21,6 +21,7 @@ setup(
     packages=find_packages("src"),
     package_dir={"": "src"},
     package_data={"rxn-ca": ["py.typed"]},
+    scripts=["bin/react"],
     zip_safe=False,
     include_package_data=True,
     install_requires=[

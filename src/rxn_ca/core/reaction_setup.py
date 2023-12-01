@@ -7,15 +7,15 @@ from pylattica.core.simulation import Simulation
 from ..phases.solid_phase_set import SolidPhaseSet
 from ..analysis.reaction_step_analyzer import ReactionStepAnalyzer
 from .constants import VOLUME
-from pylattica.square_grid import DiscreteGridSetup, PseudoHexagonalNeighborhoodBuilder2D, PseudoHexagonalNeighborhoodBuilder3D, GrowthSetup
-from pylattica.core import Runner, SimulationState, Simulation
+from pylattica.structures.square_grid import DiscreteGridSetup, PseudoHexagonalNeighborhoodBuilder2D, PseudoHexagonalNeighborhoodBuilder3D, GrowthSetup
+from pylattica.core import AsynchronousRunner, SimulationState, Simulation
 from pylattica.core import BasicController
 from pylattica.core.neighborhood_builders import NeighborhoodBuilder
 from pylattica.core.periodic_structure import PeriodicStructure
 from pylattica.core.simulation_state import SimulationState
 from pylattica.discrete import PhaseSet
 from pylattica.discrete.state_constants import DISCRETE_OCCUPANCY, VACANT
-from pylattica.square_grid.neighborhoods import MooreNbHoodBuilder
+from pylattica.structures.square_grid.neighborhoods import MooreNbHoodBuilder
 
 default_ratios = [1, 1, 1]
 
@@ -136,8 +136,8 @@ class ReactionSetup(DiscreteGridSetup):
         empty_count = analyzer.cell_count(simulation.state, self.phase_set.FREE_SPACE)
         while empty_count > 0:
             print(f'Filling remaining {empty_count} vacant cells...')
-            runner = Runner(is_async=True)
-            res = runner.run(simulation.state, controller, num_steps=int(size**3 / 2), structure=simulation.structure)
+            runner = AsynchronousRunner()
+            res = runner.run(simulation.state, controller, num_steps=int(size**3 / 2))
             simulation = Simulation(res.last_step, simulation.structure)
             empty_count = analyzer.cell_count(simulation.state, self.phase_set.FREE_SPACE)
 

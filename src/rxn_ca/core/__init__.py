@@ -1,5 +1,3 @@
-from pylattica.core import Simulation, Runner
-
 from .reaction_controller import ReactionController
 from .reaction_result import ReactionResult
 from .reaction_setup import ReactionSetup

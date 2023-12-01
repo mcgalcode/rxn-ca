@@ -5,7 +5,7 @@ from typing import Dict, List, Tuple
 from pylattica.discrete.state_constants import DISCRETE_OCCUPANCY
 from pylattica.core.periodic_structure import PeriodicStructure
 from pylattica.core.simulation_state import SimulationState
-from pylattica.square_grid.neighborhoods import VonNeumannNbHood2DBuilder, VonNeumannNbHood3DBuilder
+from pylattica.structures.square_grid.neighborhoods import VonNeumannNbHood2DBuilder, VonNeumannNbHood3DBuilder
 from pylattica.core.basic_controller import BasicController
 
 from .normalizers import normalize
@@ -53,12 +53,10 @@ class ReactionController(BasicController):
 
     def __init__(self,
         structure: PeriodicStructure,
-        scored_rxns: ReactionLibrary = None,
-        phases: SolidPhaseSet = None,
+        scored_rxns: ScoredReactionSet = None,
         inertia = 1,
         open_species = {},
         free_species = None,
-        heating_schedule = None,
     ) -> None:
         
         if free_species is None:
@@ -71,14 +69,6 @@ class ReactionController(BasicController):
         self.rxn_set = scored_rxns
         
         self.structure = structure
-        self.heating_schedule = heating_schedule
-        if scored_rxns is not None:
-            self.phase_set: SolidPhaseSet = scored_rxns.phases
-        elif phases is not None:
-            self.phase_set = phases
-        else:
-            raise RuntimeError("Must specify either phases or scored_rxns when instantiating a ReactionController")
-
         nb_hood_builder = ReactionController.get_neighborhood_from_structure(structure)
 
         self.nb_graph = nb_hood_builder.get(structure)
@@ -105,7 +95,7 @@ class ReactionController(BasicController):
 
         center_species = center_site_state[DISCRETE_OCCUPANCY]
 
-        if center_species == self.phase_set.FREE_SPACE:
+        if center_species == SolidPhaseSet.FREE_SPACE:
             return {}
         else:
             possible_reactions = self.rxns_at_site(site_id, prev_state)
@@ -218,7 +208,7 @@ class ReactionController(BasicController):
             new_phase_name = str(np.random.choice(list(rxn.products), p=likelihoods))
 
             if new_phase_name in self.free_species:
-                new_phase_name = self.phase_set.FREE_SPACE
+                new_phase_name = reactant_phase
             
             return new_phase_name
         else:   

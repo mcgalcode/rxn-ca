@@ -13,7 +13,7 @@ from typing import Dict
 from .computing import AutomatonStore, enumerate_flow
 
 from jobflow.managers.local import run_locally
-from pylattica.core import Runner, Simulation
+from pylattica.core import AsynchronousRunner, Simulation
 
 from typing import List
 from rxn_network.reactions.reaction_set import ReactionSet
@@ -49,7 +49,7 @@ def run(simulation: Simulation,
         verbose=True,
         open_gas=None,
         inertia=0):
-    runner = Runner(is_async=True)
+    runner = AsynchronousRunner(is_async=True)
     print(f'Running simulation with inertia {inertia}')
 
     open_species = None
