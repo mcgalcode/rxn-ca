@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 from rxn_network.reactions.reaction_set import ReactionSet
 
+import json
+
 
 class ReactionLibrary(MSONable):
     """Contains a mapping of temperatures to ScoredReactionSet objects
@@ -28,6 +30,14 @@ class ReactionLibrary(MSONable):
             )
 
         return library
+    
+    @classmethod
+    def from_file(cls, fpath):
+
+        with open(fpath, 'r+') as f:
+            d = json.load(f)
+            return cls.from_dict(d)
+
 
 
     def __init__(self, rxn_set: ReactionSet = None, phases: SolidPhaseSet = None):
@@ -62,3 +72,7 @@ class ReactionLibrary(MSONable):
             "phases": self.phases.as_dict(),
             "lib": lib,
         }
+
+    def to_file(self, fpath):
+        with open(fpath, 'w+') as f:
+            json.dump(self.as_dict(), f)

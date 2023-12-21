@@ -51,9 +51,11 @@ class EnumerateRxnsMaker(Maker):
         # potential way to use the grand potential enumerator is to run it at a variety of chemical potentials,
         # then add all the resulting reaction sets to gether, and set the chempot to the desired value for all of them
         # can calculate oxygen chempots with ktlnPO2 / 2
-        print(f'Using {len(eset.entries)} entries')
 
         eset = entry_set_maker.make.original(entry_set_maker, chem_sys)
+
+        print(f'Using {len(eset.entries)} entries')
+
         enumerator = MinimizeGibbsEnumerator()
         enumeration_maker = ReactionEnumerationMaker()
         enumerators = [enumerator]
@@ -70,3 +72,5 @@ class EnumerateRxnsMaker(Maker):
         )
 
         return result_model
+    
+# Consider JCTC, Chemistry of Materials

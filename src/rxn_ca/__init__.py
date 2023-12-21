@@ -19,10 +19,17 @@ from typing import List
 from rxn_network.reactions.reaction_set import ReactionSet
 from tqdm import tqdm
 
-def setup(phases: SolidPhaseSet, phase_mixture: Dict, size: int, dim: int = 3, particle_size = 1):
-    phase_names = []
-    phase_amts = []
-    buffer_len = 5
+def setup_reaction(
+        phases: SolidPhaseSet,
+        size: int,
+        phase_mole_amts: Dict = None,
+        phase_mole_ratios: Dict = None,
+        dim: int = 3,
+        particle_size = 1,
+        vol_scale = 1.0,
+        vol_multiplier = 1.0,
+    ):
+    buffer_len = 1
 
     volume = size ** dim
     buffer_vol = buffer_len ** dim
@@ -30,17 +37,22 @@ def setup(phases: SolidPhaseSet, phase_mixture: Dict, size: int, dim: int = 3, p
 
     print(f"Simulation volume is {volume}")
     print(f"Interaction volume is {interaction_vol}")
-    num_desired_particles = volume /  (interaction_vol * particle_size)
-    num_allowed_particles = int((dim - 0.5) * volume / buffer_vol)
+    # num_desired_particles = volume /  (interaction_vol * particle_size)
+    # num_allowed_particles = int((dim - 0.5) * volume / buffer_vol)
 
-    num_sites = min(num_desired_particles, num_allowed_particles)
+    num_sites = 500 # min(num_desired_particles, num_allowed_particles)
     print(f'Nucleating grains at {num_sites} sites')
-    for name, amt in phase_mixture.items():
-        phase_names.append(name)
-        phase_amts.append(amt)
 
     setup = ReactionSetup(phases, dim=dim)
-    sim = setup.setup_growth(size, num_sites, phase_names, phase_mol_ratios=phase_amts)
+    sim = setup.setup_growth(
+        size,
+        num_sites,
+        phase_mol_amts=phase_mole_amts,
+        phase_mol_ratios=phase_mole_ratios,
+        volume_scale=vol_scale,
+        volume_multiplier=vol_multiplier
+    )
+    
     return sim
 
 def run(simulation: Simulation,

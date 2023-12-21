@@ -12,15 +12,13 @@ import os
 import time
 
 parser = argparse.ArgumentParser(
-                    prog="Reaction Automaton",
-                    description="Runs the rxn-ca automaton",
+                    prog="Write Reactions",
+                    description="Downloads and serializes a reaction set",
 )
 
 parser.add_argument('recipe_filename')
 parser.add_argument('-d', '--input-dir')
 parser.add_argument('-o', '--output-file')
-parser.add_argument('-r', '--reactions-file')
-parser.add_argument('-i', '--initial-simulation-file')
 
 parser.add_argument('-s', '--single', default=False, action='store_true')
 
@@ -28,8 +26,6 @@ args = parser.parse_args()
 
 output_file = args.output_file
 recipe_filename = args.recipe_filename
-reactions_filename = args.reactions_file
-initial_simulation_filename = args.initial_simulation_file
 
 print(f"Reading recipe from {recipe_filename}...")
 
@@ -46,20 +42,12 @@ recipe = ReactionRecipe.from_file(recipe_filename)
 
 if args.single:
     maker = SingleRxnMaker()
-    flow = maker.make(
-        recipe,
-        output_fname=output_file,
-        reactions_filename=reactions_filename,
-        initial_simulation_filename=initial_simulation_filename
-    )
 else:
     maker = ParallelRxnMaker()
-    flow = maker.make(
-        recipe,
-        output_fname=output_file,
-        reactions_filename=reactions_filename
-    )
 
-
+flow = maker.make(
+    recipe,
+    output_fname=output_file
+)
 
 output: RxnCAResultDoc = run_locally(flow)

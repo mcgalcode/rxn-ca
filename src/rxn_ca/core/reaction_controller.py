@@ -12,7 +12,6 @@ from .normalizers import normalize
 from ..phases.solid_phase_set import SolidPhaseSet
 from .reaction_result import ReactionResult
 from .reaction_setup import VOLUME
-from ..reactions import ReactionLibrary
 from ..reactions import ScoredReactionSet, ScoredReaction
 from ..phases.gasses import DEFAULT_GASES
 
@@ -81,9 +80,6 @@ class ReactionController(BasicController):
     
     def set_rxn_set(self, rxn_set: ScoredReactionSet):
         self.rxn_set = rxn_set
-
-    def get_random_site(self):
-        return random.randint(0,len(self.structure.site_ids) - 1)
 
     def instantiate_result(self, starting_state: SimulationState):
         return ReactionResult(starting_state)

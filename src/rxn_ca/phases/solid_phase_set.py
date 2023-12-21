@@ -6,6 +6,8 @@ import pkg_resources
 import pandas as pd
 from monty.serialization import loadfn
 
+from pymatgen.core.composition import Composition
+
 class SolidPhaseSet(PhaseSet):
 
     FREE_SPACE = "Free Space"
@@ -45,6 +47,36 @@ class SolidPhaseSet(PhaseSet):
 
     def get_theoretical_phases(self):
         return [phase for phase in self.phases if phase != SolidPhaseSet.FREE_SPACE and self.is_theoretical(phase)]
+    
+    def mole_amts_to_vols(self, mol_amts):
+        return { phase: amt * self.get_vol(phase) for phase, amt in mol_amts.items() }
+
+    def vol_amts_to_moles(self, vol_amts):
+        { phase: amt / self.get_vol(phase) for phase, amt in vol_amts.items() }
+
+    def mole_amts_to_el_amts(self, mol_amts):
+        el_amts = {}
+
+        for phase, p_amt in mol_amts.items():
+            comp = Composition(phase)
+            for el, el_amt in comp.get_el_amt_dict().items():
+                if el in el_amts:
+                    el_amts[el] += el_amt * p_amt
+                else:
+                    el_amts[el] = el_amt * p_amt
+        
+        return el_amts
+
+    def vol_amts_to_el_amts(self, vol_amts):
+        mol_amts = self.vol_amts_to_moles(vol_amts)
+        return self.mole_amts_to_el_amts(mol_amts)
+
+    def el_amts_to_el_fracs(self, el_amts):
+        total = sum(el_amts.values())
+        return {
+            el: amt / total for el, amt in el_amts.items()
+        }
+        
 
     def as_dict(self):
         return {
@@ -86,7 +118,6 @@ def get_experimentally_observed(phases):
             formula = phases,
             fields=["theoretical", "composition"]
         )
-        print(len(res))
         for item in res:
             form = item.composition.reduced_formula
             prev = experimentally_observed.get(form)

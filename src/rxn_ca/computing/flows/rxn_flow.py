@@ -3,47 +3,26 @@ from jobflow import Maker, job
 from rxn_ca import setup_reaction, get_scored_rxns
 from ...core.multi_stage_runner import run_multi
 from ...core.recipe import ReactionRecipe
-
 from ...reactions import ReactionLibrary
 
 from ..schemas.ca_result_schema import RxnCAResultDoc
 
-import multiprocessing as mp
+from pylattica.core import Simulation
+
 from dataclasses import dataclass
 
-_heating = "_heating"
-_rxns = "rxns"
-_recipe = "recipe"
-
-def get_result(_):
-    sim = setup_reaction(
-        mp_globals[_rxns].phases,
-        mp_globals[_recipe].simulation_size,
-        phase_mole_ratios=mp_globals[_recipe].reactant_amounts,
-        particle_size=mp_globals[_recipe].particle_size
-    )
-
-    try:
-        return run_multi(
-            sim,
-            mp_globals[_rxns],
-            mp_globals[_heating]
-        )
-    except Exception as e:
-        print(e.__traceback__)
-        print("Run failed!")
-        return None
 
 @dataclass
-class ParallelRxnMaker(Maker):
+class SingleRxnMaker(Maker):
 
-    name: str = "Rxn Sim. Parallel"
+    name: str = "Rxn Sim. Single"
 
     @job(data="results")
     def make(self,
              recipe: ReactionRecipe,
              output_fname: str = None,
-             reactions_filename: str = None):
+             reactions_filename: str = None,
+             initial_simulation_filename: str = None):
         
         print('\n\n\n')
         print(
@@ -62,7 +41,6 @@ class ParallelRxnMaker(Maker):
             print(f'Reading reactions from {reactions_filename}...')
             rxn_lib = ReactionLibrary.from_file(reactions_filename)
         else:
-            print("Download reactions from MP")
             rxn_lib = get_scored_rxns(
                 recipe.chem_sys,
                 heating_sched=recipe.heating_schedule,
@@ -75,33 +53,30 @@ class ParallelRxnMaker(Maker):
         print()
         print()
 
-        # print("================= SETTING UP SIMULATION =================")
+        print("================= SETTING UP SIMULATION =================")
+
+        if initial_simulation_filename is None:
+            initial_simulation = setup_reaction(
+                rxn_lib.phases,
+                recipe.simulation_size,
+                phase_mole_ratios = recipe.reactant_amounts,
+                particle_size=recipe.particle_size
+            )
+        else:
+            initial_simulation = Simulation.from_file(initial_simulation_filename)
+
+        print(f'================= RUNNING SIMULATION w/ 1 REALIZATION =================')
 
 
+        result = run_multi(
+            initial_simulation,
+            rxn_lib,
+            recipe.heating_schedule
+        )
 
-
-
-        print(f'================= RUNNING SIMULATION w/ {recipe.num_realizations} REALIZATIONS =================')
-
-
-        global mp_globals
-
-        mp_globals = {
-            _heating: recipe.heating_schedule,
-            _rxns: rxn_lib,
-            _recipe: recipe
-        }
-
-
-        with mp.get_context("fork").Pool(recipe.num_realizations) as pool:
-            results = pool.map(get_result, [_ for _ in range(recipe.num_realizations)])
-
-        good_results = [res for res in results if res is not None]
-        print(f'{len(good_results)} results achieved out of {len(results)}')
-  
         result_doc = RxnCAResultDoc(
             recipe=recipe,
-            results=good_results,
+            results=[result],
             reaction_library=rxn_lib,
         )
 

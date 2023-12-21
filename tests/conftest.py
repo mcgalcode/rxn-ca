@@ -1,9 +1,9 @@
 import pytest
 
 from pylattica.discrete import PhaseSet
-from pylattica.square_grid import DiscreteGridSetup
+from pylattica.structures.square_grid import DiscreteGridSetup
 
-from pylattica.square_grid import SimpleSquare2DStructureBuilder, DiscreteGridSetup
+from pylattica.structures.square_grid import SimpleSquare2DStructureBuilder, DiscreteGridSetup
 from pylattica.discrete import PhaseSet
 
 @pytest.fixture(scope="module")

@@ -27,6 +27,8 @@ class ScoredReactionSet():
             [ScoredReaction.from_dict(r) for r in rxn_set_dict["reactions"]],
         )
 
+    IDENTITY = "IDENTITY"
+
     def __init__(self, reactions: list[ScoredReaction], phase_set: SolidPhaseSet = None, identity_score = 1):
         """Initializes a SolidReactionSet object. Requires a list of possible reactions
         and the elements which should be considered available in the atmosphere of the
@@ -38,6 +40,7 @@ class ScoredReactionSet():
         self.reactant_map = {}
         self.reactions: List[ScoredReaction] = []
         self.rxn_map = {}
+        self._identity_score = identity_score
         # Replace strength of identity reaction with the depth of the hull its in
 
         for r in reactions:
@@ -45,15 +48,24 @@ class ScoredReactionSet():
 
         self.phases = phase_set
 
-        if phase_set is not None:
-            for phase in phase_set.phases:
-                if phase not in DEFAULT_GASES and phase is not SolidPhaseSet.FREE_SPACE:
-                    self_rxn = ScoredReaction.self_reaction(phase, strength = identity_score)
-                    existing = self.get_reactions([phase])
-                    if len(existing) > 0 and not any(map(lambda rxn: rxn.is_identity, existing)):
-                        self.add_rxn(self_rxn)
-                    elif len(existing) == 0:
-                        self.add_rxn(self_rxn)
+        # if phase_set is not None:
+        #     for phase in phase_set.phases:
+        #         if phase not in DEFAULT_GASES and phase is not SolidPhaseSet.FREE_SPACE:
+        #             self_rxn = ScoredReaction.self_reaction(phase, strength = identity_score)
+        #             existing = self.get_reactions([phase])
+        #             if len(existing) > 0 and not any(map(lambda rxn: rxn.is_identity, existing)):
+        #                 self.add_rxn(self_rxn)
+        #             elif len(existing) == 0:
+        #                 self.add_rxn(self_rxn)
+
+    def _add_identity(self, phase):
+        if phase not in DEFAULT_GASES and phase is not SolidPhaseSet.FREE_SPACE:
+            self_rxn = ScoredReaction.self_reaction(phase, strength = self._identity_score)
+            existing = self.get_reactions([phase])
+            if len(existing) > 0 and not any(map(lambda rxn: rxn.is_identity, existing)):
+                self.add_rxn(self_rxn)
+            elif len(existing) == 0:
+                self.add_rxn(self_rxn)        
 
     def rescore(self, scorer):
         rescored = [rxn.rescore(scorer) for rxn in self.reactions if not rxn.is_identity]
@@ -67,6 +79,10 @@ class ScoredReactionSet():
         else:
             self.reactant_map[reactant_set].append(rxn)
             self.reactant_map[reactant_set] = sorted(self.reactant_map[reactant_set], key = lambda rxn: rxn.competitiveness, reverse = True)
+
+        for phase in rxn.all_phases:
+            self._add_identity(phase)
+    
         self.rxn_map[str(rxn)] = rxn
         self.reactions.append(rxn)
 

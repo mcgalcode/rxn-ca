@@ -17,7 +17,8 @@ chem_syses = [
     # "Co-Cl-H-O",
     # "Ca-S-O-H",
     # "Cu-O",
-    "Mg-Al-O"
+    # "Mg-Al-O",
+    "Y-Mn-Cl-Na-C-O"
 ]
 
 formulas_to_include = {
@@ -28,7 +29,8 @@ formulas_to_include = {
 special_cutoffs = {
     "Li-Mn-Ti-F-C-O": [0.01],
     "Y-Mn-C-Cl-O-Li": [0.01],
-    "Y-Mn-Cl-O-Li": [0.01]    
+    "Y-Mn-Cl-O-Li": [0.01],
+    "Y-Mn-Cl-Na-C-O": [0.03]    
 }
 
 full_extras = list(range(400,1500,100))
@@ -44,6 +46,7 @@ extra_temps = {
     "Li-Mn-Ti-F-C-O": full_extras,
     "Y-Ba-Cu-O": full_extras,
     "Y-Mn-C-Cl-O-Li": full_extras,
+    "Y-Mn-Cl-Na-C-O": full_extras,
     "Cl-Li-Mn-O-Y": full_extras,
     "Yb-Ru-Sn": full_extras,
     "Bi-Fe-O": full_extras,

@@ -4,6 +4,8 @@ from ...core.recipe import ReactionRecipe
 from ...core.reaction_result import ReactionResult
 from ...reactions.reaction_library import ReactionLibrary
 
+from pylattica.core import PeriodicStructure
+
 from .job_types import JobTypes
 from monty.json import MSONable
 from dataclasses import dataclass
@@ -21,14 +23,15 @@ class RxnCAResultDoc(MSONable):
     @classmethod
     def from_file(cls, fname):
         with open(fname, "rb") as f:
-            return cls.from_dict(json.loads(f.read()))
+            return cls.from_dict(json.load(f))
     
     @classmethod
     def from_dict(cls, d):
+
         return cls(
             recipe = ReactionRecipe.from_dict(d['recipe']),
             results = [ReactionResult.from_dict(d) for d in  d["results"]],
-            reaction_library = ReactionLibrary.from_dict(d['reaction_library'])
+            reaction_library = ReactionLibrary.from_dict(d['reaction_library']),
         )
 
     def as_dict(self):
@@ -36,9 +39,9 @@ class RxnCAResultDoc(MSONable):
         return { **d, **{
             "recipe": self.recipe.as_dict(),
             "results": [r.as_dict() for r in self.results],
-            "reaction_library": self.reaction_library.as_dict()
+            "reaction_library": self.reaction_library.as_dict(),
         }}
 
     def to_file(self, fname):
         with open(fname, "w+") as f:
-            f.write(json.dumps(self.as_dict()))
+            json.dump(self.as_dict(), f)

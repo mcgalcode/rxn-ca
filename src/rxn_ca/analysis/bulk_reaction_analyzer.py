@@ -43,7 +43,6 @@ class BulkReactionAnalyzer():
     def plot_elemental_amounts(self) -> None:
         fig = go.Figure()
         fig.update_layout(width=800, height=800, title="Molar Elemental Amount vs time step")
-        print("updated")
         fig.update_layout(yaxis_range=[0,None])
 
         fig.update_yaxes(title="# of Moles")
@@ -54,6 +53,29 @@ class BulkReactionAnalyzer():
         
         step_idxs, step_groups = self._get_step_groups()
         amounts = [self.bulk_step_analyzer.elemental_composition(sg) for sg in step_groups]
+        for el in elements:
+            ys = [a.get(el, 0) for a in amounts]
+            traces.append((step_idxs, ys, el))
+
+
+        for t in traces:
+            fig.add_trace(go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines'))
+
+        fig.show()
+    
+    def plot_elemental_fractions(self) -> None:
+        fig = go.Figure()
+        fig.update_layout(width=800, height=800, title="Elemental Fractions vs time step")
+        fig.update_layout(yaxis_range=[0,None])
+
+        fig.update_yaxes(title="El. Fraction")
+        fig.update_xaxes(title="Simulation Step")
+
+        elements = list(self.single_step_analyzer.elemental_composition_fractional(self.results[0].first_step).keys())
+        traces = []
+        
+        step_idxs, step_groups = self._get_step_groups()
+        amounts = [self.bulk_step_analyzer.elemental_composition_fractional(sg) for sg in step_groups]
         for el in elements:
             ys = [a.get(el, 0) for a in amounts]
             traces.append((step_idxs, ys, el))
@@ -169,7 +191,14 @@ class BulkReactionAnalyzer():
 
         go_traces = [go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines', line=dict(width=4)) for t in filtered_traces]
         return go_traces
+    
+    def molar_fractional_breakdown(self, step_no):
+        steps = [r.get_step(step_no) for r in self.results]
+        return self.bulk_step_analyzer.molar_fractional_breakdown(steps)
 
+    def molar_breakdown(self, step_no):
+        steps = [r.get_step(step_no) for r in self.results]
+        return self.bulk_step_analyzer.molar_breakdown(steps)
 
     def plot_mole_fractions(self, min_prevalence=0.01) -> None:
         """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
@@ -218,7 +247,7 @@ class BulkReactionAnalyzer():
         for phase in phases:
             if phase is not SolidPhaseSet.FREE_SPACE:
                 ys = np.array([mb.get(phase, 0) for mb in molar_breakdowns])
-                
+            
                 if xrd_adjust:
                     comp = Composition(phase)
                     ys = ys * comp.num_atoms
@@ -338,7 +367,6 @@ class BulkReactionAnalyzer():
             
         for phase in phases:
             if phase != SolidPhaseSet.FREE_SPACE:
-                print(phase, SolidPhaseSet.FREE_SPACE)
                 ys = [mb.get(phase, 0) for mb in vol_breakdowns]
                 traces.append((step_idxs, ys, phase))
 
