@@ -1,0 +1,41 @@
+from rxn_ca.utilities.get_scored_rxns import get_scored_rxns
+
+from rxn_ca.core.recipe import ReactionRecipe
+from rxn_ca.computing.schemas.enumerated_rxns_schema import EnumeratedRxnsModel
+
+import argparse
+
+import json
+
+parser = argparse.ArgumentParser(
+                    prog="Build reaction library from reaction set",
+                    description="Build reaction library from reaction set",
+)
+
+parser.add_argument('-s', '--reaction-set-file')
+parser.add_argument('-r', '--recipe-file')
+
+parser.add_argument('-o', '--output-file')
+
+args = parser.parse_args()
+
+reaction_set_file = args.reaction_set_file
+recipe_file = args.recipe_file
+
+recipe: ReactionRecipe = ReactionRecipe.from_file(recipe_file)
+enumeration: EnumeratedRxnsModel = EnumeratedRxnsModel.from_file(reaction_set_file)
+
+print("Building library...")
+
+lib = get_scored_rxns(enumeration.rxn_set,
+                      recipe.heating_schedule,
+                      exclude_theoretical=recipe.exclude_theoretical,
+                      exclude_phases=recipe.exclude_phases,
+                      phase_set=enumeration.phases)
+
+output_filename = args.output_file
+
+if output_filename is None:
+    output_filename = f'reaction_library.json'
+
+lib.to_file(output_filename)

@@ -252,8 +252,9 @@ class ReactionSetup(DiscreteGridSetup):
             vol_scale=volume_scale
         )
 
-        close = False
-        while not close:
+        close = 20
+        tries_remaining = 15
+        while not close and tries_remaining > 0:
             print("Tweaking volumes to tune amounts...")
             res = runner.run(simulation.state, tuner_controller, num_steps=5 * int(size**3))
             simulation = Simulation(res.last_step, simulation.structure)
@@ -267,12 +268,8 @@ class ReactionSetup(DiscreteGridSetup):
                 actual = analyzer.phase_volume_fractions(simulation.state, include_melted=False)
                 ideal = normalized_vol_ratios
 
-            # for phase, ideal_amt in ideal.items():
-            #     actual_amt = actual.get(phase, 0)
-            #     if np.abs(ideal_amt - actual_amt) / ideal_amt > 0.01:
-            #         print(f"{phase}: {ideal_amt}, {actual_amt}, {np.abs(ideal_amt - actual_amt) / ideal_amt}")
-
             close = _check_closeness(ideal, actual)
+            tries_remaining = tries_remaining - 1
 
         
         return simulation
