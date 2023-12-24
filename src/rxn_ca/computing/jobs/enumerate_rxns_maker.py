@@ -22,7 +22,6 @@ class EnumerateRxnsMaker(Maker):
     @job
     def make(self,
              chem_sys: str,
-             temp: int = 300,
              stability_cutoff: float = 0.1,
              open_el: str = None,
              chempot: float = None,
@@ -31,7 +30,6 @@ class EnumerateRxnsMaker(Maker):
 
         # First we enumerate entries
         entry_set_maker = GetEntrySetMaker(
-            temperature=temp,
             e_above_hull=stability_cutoff,
             MP_API_KEY=mp_api_key,
             formulas_to_include=formulas_to_include
@@ -65,7 +63,6 @@ class EnumerateRxnsMaker(Maker):
         result_model = EnumeratedRxnsModel.from_obj(
             rxns.rxns,
             chem_sys,
-            temperature=temp,
             stability_cutoff=stability_cutoff,
             open_el=open_el,
             chem_pot=chempot,

@@ -1,4 +1,4 @@
-from rxn_ca import AutomatonStore, enumerate_rxns
+from rxn_ca.utilities.enumerate_rxns import enumerate_rxns
 
 import argparse
 
@@ -9,19 +9,44 @@ parser = argparse.ArgumentParser(
                     description="enumerates reactions",
 )
 
-parser.add_argument('reaction_manifest')
+parser.add_argument('-m', '--reaction-manifest')
+
+parser.add_argument('-s', '--chemical-system')
+parser.add_argument('-e', '--energy-cutoff')
+parser.add_argument('-f', '--formulas-to-include')
+
+parser.add_argument('-o', '--output-file')
 
 args = parser.parse_args()
 
-output_file = args.reaction_manifest
+manifest_filename = args.reaction_manifest
 
-with open(output_file, 'r+') as f:
-    manifest = json.load(f)
+if manifest_filename is not None:
+    with open(manifest_filename, 'r+') as f:
+        manifest = json.load(f)
 
-chem_syses = manifest["chem_syses"]
-formulas_to_include = manifest["formulas_to_include"]
-special_cutoffs = manifest["special_cutoffs"]
-extra_temps = manifest["extra_temps"]
+    chem_sys = manifest.get("chemical_system")
+    formulas_to_include = manifest.get("formulas_to_include", None)
+    energy_cutoff = manifest.get("energy_cutoff", None)
+else:
+    chem_sys = args.chemical_system
+    energy_cutoff = args.energy_cutoff
+    formulas_to_include = args.formulas_to_include
+
+print(f"Enumerating rxns for {chem_sys} using energy cutoff {energy_cutoff} and ensuring formulas {formulas_to_include} are present")          
+result = enumerate_rxns(chem_sys=chem_sys,
+               stability_cutoff=energy_cutoff,
+               formulas_to_include=formulas_to_include)
+
+
+output_filename = args.output_file
+
+if output_filename is None:
+    output_filename = f'{chem_sys}_reactions.json'
+
+result.to_file(output_filename)
+
+
 # chem_syses = [
 #     "Ba-Cl-Na-Ti-O",
 #     "Ba-S-Na-Ti-O",
@@ -77,23 +102,3 @@ extra_temps = manifest["extra_temps"]
 #     "Cu-O": full_extras,
 #     "Mg-Al-O": full_extras
 # }
-
-store = AutomatonStore()
-
-store.list_available_sets()
-
-default_cutoffs = [0.01]
-
-for sys in chem_syses:
-    if sys in special_cutoffs:
-        cutoffs = special_cutoffs.get(sys)
-    else:
-        cutoffs = default_cutoffs
-        
-    for cutoff in cutoffs:
-        print(f"Enumerating rxns for {sys} at {cutoff} ")          
-        enumerate_rxns(sys,
-                       stability_cutoff=cutoff,
-                       base_temp=300,
-                       other_temps=extra_temps.get(sys),
-                       formulas_to_include=formulas_to_include.get(sys, []))

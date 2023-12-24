@@ -39,7 +39,6 @@ class ReactionLibrary(MSONable):
             return cls.from_dict(d)
 
 
-
     def __init__(self, rxn_set: ReactionSet = None, phases: SolidPhaseSet = None):
         self.lib = {}
         if phases is None:
