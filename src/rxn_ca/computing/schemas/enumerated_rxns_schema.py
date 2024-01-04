@@ -35,7 +35,6 @@ class EnumeratedRxnsModel(BaseSchema):
             stability_cutoff = stability_cutoff,
             open_el = open_el,
             chem_pot = chem_pot,
-            phases = SolidPhaseSet.from_rxn_set(rxn_set)
         )
 
     @classmethod
@@ -43,7 +42,6 @@ class EnumeratedRxnsModel(BaseSchema):
 
         return cls(
             rxn_set = ReactionSet.from_dict(d['rxn_set']),
-            phases = SolidPhaseSet.from_dict(d['phases']),
             chem_sys = d['chem_sys'],
             stability_cutoff = d['stability_cutoff'],
             open_el = d['open_el'],
@@ -58,5 +56,4 @@ class EnumeratedRxnsModel(BaseSchema):
             "stability_cutoff": self.stability_cutoff,
             "open_el": self.open_el,
             "chem_pot": self.chem_pot,
-            "phases": self.phases.as_dict()
         }}
