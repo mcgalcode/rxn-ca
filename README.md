@@ -2,21 +2,31 @@
 
 ## Getting Started
 
-#### Setting up jobflow
-
-`rxn-ca` uses `jobflow` to store reactions that are eventually used. Follow the jobflow setup. When you are finished, you should be able to retrieve a reference to your jobflow store in a python environment by running `JobflowSettings().JOB_STORE`.
-
 ### Enumerating Reactions
 
-Use the `enumerate` script to enumerate reactions prior to running your simulation. It accepts a single positional argument which is a filepath for a reaction manifest file. This file specifies all the chemical systems, temperatures, and energy cutoffs for which reactions should be enumerated. You can see an example of this file in `data/rxn_manifest.json`.
+The first step in using `rxn-ca` is to enumerate reactions. This process utilizes the `reaction-network` package to calculate the stoichiometrically viable reactions and their energies using data from the Materials Project. The result of this step is an output file containing a set of reactions that will be used in subsequent steps.
+
+To perform this enumeration, use the `enumerate` script, which is made available upon installation of `rxn-ca`. It accepts a single positional argument which is a filepath for a reaction manifest file. This file specifies the chemical system, and energy stability cutoffs, and any specific formulas that should be included regardless of their stability. Here is an example file:
+
+```
+{
+    "chemical_system": "Ba-Ti-O",
+    "formulas_to_include": ["Ba2Ti2O5"],
+    "energy_cutoff": 0.02,
+}
+```
+
+These parameters can be specified as command line arguments as well.
 
 Once `rxn-ca` is installed, and your manifest file is written, enumeration is performed like this:
 
 ```
-enumerate my_reaction_manifest.json
+enumerate -m my_reaction_manifest.json -o my_output_file.json
 ```
 
-### Writing your reaction recipe
+If successful, the enumerated reactions will be written to the `my_output_file.json` file.
+
+### Writing a reaction recipe
 
 Before running a reaction, you must specify the recipe that will run it. Here's an example python snippet that creates a simple recipe:
 
@@ -35,24 +45,37 @@ recipe = ReactionRecipe(
         "BaS": 1,
         "Na2TiO3": 1,
     },
-    particle_size=0.5,
-    heating_schedule=heating_schedule,
-    simulation_size=15,
-    num_realizations=3
+    heating_schedule=heating_schedule
 )
 
 recipe.to_file("BaS_Na2TiO3_recipe.json")
 ```
 
+This snippet will create yet another JSON file containing the details of the recipe.
+
+### Building a library of reactions for your recipe
+
+`rxn-ca` takes into account the temperatures specified in the reaction recipe. Since the free energy change in each reaction is a function of temperature, the energetics of every reaction must be recalculated at every temperature specified in the recipe. When this is performed, the resulting collection of reactions and their energies is called a `ReactionLibrary`. You can build one using the `build-library` script.
+
+All you need to specify for this script is the location of the file containing your reaction recipe, and the location of the reaction enumeration you performed earlier.
+
+You can generate your reaction library file like this:
+
+```
+build-library -s my_reaction_set.json -r my_recipe.json -o my_output_library.json
+```
+
+The resulting `ReactionLibrary` will be saved in the `my_output_library.json` file.
+
 ### Running your reaction
 
-Use the `react` script to run your reaction. In the simplest case, just pass the recipe file name to the script:
+Use the `react` script to run your reaction. In the simplest case, just pass the recipe and reaction library file names to the script:
 
 ```
-react my_recipe.json
+react my_recipe.json -l my_reaction_library.json
 ```
 
-The output of your reaction will be stored in a json file whose name will be printed at the end of the stdout.
+The output of your reaction will be stored in a JSON file whose name will be printed at the end of the stdout.
 
 ### Analyzing your reaction outcome
 
@@ -65,14 +88,4 @@ from rxn_ca.analysis.bulk_reaction_analyzer import BulkReactionAnalyzer
 
 analyzer = BulkReactionAnalyzer.from_result_doc_file("my_result.json")
 analyzer.plot_molar_phase_amounts()
-```
-
-## Debugging
-
-### grpcio
-
-On M1 Macs, importing code related to the reaction-network can cause breakages. The suggested action from the error message, reproduced below, should fix any issues.
-
-```
-Failed to import grpc on Apple Silicon. On Apple Silicon machines, try `pip uninstall grpcio; conda install grpcio`. Check out https://docs.ray.io/en/master/ray-overview/installation.html#m1-mac-apple-silicon-support for more details.
 ```
