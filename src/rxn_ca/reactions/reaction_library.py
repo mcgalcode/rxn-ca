@@ -1,11 +1,7 @@
 from .scored_reaction_set import ScoredReactionSet
 from ..phases.solid_phase_set import SolidPhaseSet
-from rxn_network.reactions.reaction_set import ReactionSet
 
 from monty.json import MSONable
-from dataclasses import dataclass
-
-from rxn_network.reactions.reaction_set import ReactionSet
 
 import json
 
