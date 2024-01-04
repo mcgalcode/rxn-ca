@@ -17,14 +17,14 @@ def get_scored_rxns(rxn_set: ReactionSet,
                     exclude_phases: List[str]= [],
                     phase_set: SolidPhaseSet = None):
 
-    lib = ReactionLibrary(rxn_set, phases=phase_set)
+    lib = ReactionLibrary(phases=phase_set)
     sched_temps = heating_sched.all_temps
     
     for t in tqdm(sched_temps, desc="Getting reaction energies at temperatures..."):
-        scorer = scorer_class(temp=t, phase_set=lib.phases)
+        scorer = scorer_class(temp=t, phase_set=phase_set)
         rset = rxn_set.set_new_temperature(t)
 
-        scored_rxns: List[ScoredReaction] = score_rxns(rset, scorer, phase_set=lib.phases)
+        scored_rxns: List[ScoredReaction] = score_rxns(rset, scorer, phase_set=phase_set)
         scored_rset = ScoredReactionSet(scored_rxns, lib.phases, identity_score=3)
         if exclude_pure_elements:
             print("Excluding reactions involving pure elements...")
