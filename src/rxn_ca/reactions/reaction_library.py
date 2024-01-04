@@ -39,12 +39,9 @@ class ReactionLibrary(MSONable):
             return cls.from_dict(d)
 
 
-    def __init__(self, rxn_set: ReactionSet = None, phases: SolidPhaseSet = None):
+    def __init__(self, phases: SolidPhaseSet):
         self.lib = {}
-        if phases is None:
-            self.phases = SolidPhaseSet.from_rxn_set(rxn_set)
-        else:
-            self.phases = phases
+        self.phases = phases
 
     def add_rxns_at_temp(self, rxns: ScoredReactionSet, temp: int) -> int:
         self.lib[int(temp)] = rxns
