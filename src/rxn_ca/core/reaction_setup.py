@@ -251,7 +251,7 @@ class ReactionSetup(DiscreteGridSetup):
             vol_scale=volume_scale
         )
 
-        close = 20
+        close = False
         tries_remaining = 15
         while not close and tries_remaining > 0:
             print("Tweaking volumes to tune amounts...")
