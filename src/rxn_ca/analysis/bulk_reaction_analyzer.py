@@ -260,7 +260,7 @@ class BulkReactionAnalyzer():
         return go_traces
     
 
-    def plot_molar_phase_amounts(self, min_prevalence=0.01, xrd_adjust=True, phases=None) -> None:
+    def plot_molar_phase_amounts(self, min_prevalence=0.01, xrd_adjust=False, phases=None) -> None:
         """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
 
         Returns:
@@ -268,9 +268,14 @@ class BulkReactionAnalyzer():
         """
         traces = self.get_molar_phase_traces(min_prevalence, xrd_adjust=xrd_adjust, phases=phases)
 
+        if xrd_adjust:
+            ylabel = "# of Moles (weighted by # atoms)"
+        else:
+            ylabel = "# of Moles"
+
         fig = self._get_plotly_fig(
             "Simulation Step",
-            "# of Moles",
+            ylabel,
             "Absolute Molar Prevalence by Simulation Step",
             None
         )
