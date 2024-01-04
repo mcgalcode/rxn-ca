@@ -5,6 +5,7 @@ import math
 import pkg_resources
 import pandas as pd
 from monty.serialization import loadfn
+from .gasses import DEFAULT_GASES
 
 from pymatgen.core.composition import Composition
 
@@ -17,20 +18,26 @@ class SolidPhaseSet(PhaseSet):
         return cls(
             set_dict["phases"],
             set_dict["volumes"],
+            set_dict["gas_phases"],
             set_dict["melting_points"],
-            set_dict["experimentally_observed"]
+            set_dict["experimentally_observed"],
         )
     
     @classmethod
-    def from_rxn_set(cls, rxn_set: ReactionSet):
+    def from_rxn_set(cls, rxn_set: ReactionSet, gas_phases = DEFAULT_GASES):
         all_phases = list(set([e.composition.reduced_formula for e in rxn_set.entries]))
         vols = get_phase_vols(all_phases)
         mps = get_melting_points(all_phases)
         obs = get_experimentally_observed(all_phases)
-        return cls(all_phases, volumes=vols, melting_points=mps, experimentally_observed=obs)
+        return cls(all_phases, gas_phases = gas_phases, volumes=vols, melting_points=mps, experimentally_observed=obs)
 
-    def __init__(self, phases, volumes, melting_points = None, experimentally_observed = None):
+    def __init__(self, phases,
+                       volumes,
+                       gas_phases = DEFAULT_GASES,
+                       melting_points = None,
+                       experimentally_observed = None):
         phases = phases + [SolidPhaseSet.FREE_SPACE]
+        self.gas_phases = gas_phases
         self.volumes = volumes
         self.melting_points = melting_points
         self.experimentally_observed = experimentally_observed
@@ -84,6 +91,7 @@ class SolidPhaseSet(PhaseSet):
             "@class": self.__class__.__name__,
             "phases": self.phases,
             "volumes": self.volumes,
+            "gas_phases": self.gas_phases,
             "melting_points": self.melting_points,
             "experimentally_observed": self.experimentally_observed
         }
