@@ -2,12 +2,12 @@ from monty.json import MSONable
 from dataclasses import dataclass, field
 from .heating import HeatingSchedule
 from typing import Dict, List
+from ..phases import DEFAULT_GASES
 from ..computing.utils.functions import format_chem_sys
 from ..reactions.scorers import TammanHuttigScoreErf, TammanHuttigScoreExponential, TammanHuttigScoreSoftplus
 import json
 
 from enum import Enum
-
 
 class ScoreTypes(str, Enum):
 
@@ -34,7 +34,9 @@ class ReactionRecipe(MSONable):
     num_realizations: int = 3
     exclude_phases: List[str] = field(default_factory=list)
     exclude_theoretical: bool = True
+    exclude_pure_elements: bool = False
     score_type: str = ScoreTypes.TAMMAN_HUTTIG_SOFTPLUS_GIBBS_ERF
+    additional_gas_phases: List[str] = field(default_factory=list)
 
     def __post_init__(self):
         self.chem_sys = format_chem_sys(self.chem_sys)
