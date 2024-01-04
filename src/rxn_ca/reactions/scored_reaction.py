@@ -37,8 +37,9 @@ def phases_to_str(phases: list[str]) -> str:
     phases = sorted(list(set(phases)))
     return "+".join(phases)
 
-
 class ScoredReaction:
+
+    NO_RXN = "NO_RXN"
 
     @classmethod
     def from_dict(cls, rxn_dict):
