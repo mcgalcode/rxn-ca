@@ -120,7 +120,6 @@ class ReactionTunerController(BasicController):
         
         criteria = [
             lambda s: s[DISCRETE_OCCUPANCY] in deficient_phases,
-            # lambda s: s[VOLUME] > self.lower_vol_lim and s[VOLUME] < self.upper_vol_lim
         ]
 
         valid_sites = self.analyzer.get_sites(
@@ -186,7 +185,7 @@ class ReactionSetup(DiscreteGridSetup):
             normalized_vol_ratios = { p: vol / total_vol for p, vol in desired_phase_vols.items() }
 
         ## 1. SET UP NUCLEATION SITES BASED ON VOLUME RATIOS
-        print("Reactant Phases: ", desired_phase_vols.keys())
+        print("Reactant Phases: ", desired_phase_vols)
         print("Volume Ratios: ", normalized_vol_ratios)
         print(f"Volume Scale: {volume_scale}")
         if self.dim == 2:
