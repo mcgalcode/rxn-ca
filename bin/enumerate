@@ -42,8 +42,8 @@ if chem_sys is None:
 
 print(f"Enumerating rxns for {chem_sys} using energy cutoff {energy_cutoff} and ensuring formulas {formulas_to_include} are present")          
 result = enumerate_rxns(chem_sys=chem_sys,
-               stability_cutoff=energy_cutoff,
-               formulas_to_include=formulas_to_include)
+                        stability_cutoff=energy_cutoff,
+                        formulas_to_include=formulas_to_include)
 
 
 output_filename = args.output_file

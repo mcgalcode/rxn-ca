@@ -13,6 +13,7 @@ from pylattica.core import Simulation
 import argparse
 import os
 import time
+import sys
 
 parser = argparse.ArgumentParser(
                     prog="Reaction Automaton",
@@ -54,16 +55,15 @@ recipe = ReactionRecipe.from_file(recipe_filename)
 if reactions_filename is not None:
     rxns: EnumeratedRxnsModel = EnumeratedRxnsModel.from_file(reactions_filename)
     reaction_set = rxns.rxn_set
-    phases = rxns.phases
+    phases = None
     rxn_lib = None
 elif reaction_library_filename is not None:
     rxn_lib = ReactionLibrary.from_file(reaction_library_filename)
     reaction_set = None
-    phases = None
+    phases = rxn_lib.phases
 else:
-    reaction_set = None
-    phases = None
-    rxn_lib = None
+    print("Either --reactions-file or --reaction-library-file is required to use the react script")
+    sys.exit()
 
 if initial_simulation_filename is not None:
     initial_simulation = Simulation.from_file(initial_simulation_filename)
