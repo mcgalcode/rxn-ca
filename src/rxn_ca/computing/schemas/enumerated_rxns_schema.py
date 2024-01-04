@@ -6,9 +6,6 @@ from typing import Optional
 
 from rxn_network.reactions.reaction_set import ReactionSet
 
-from ..utils.functions import format_chem_sys
-from ...phases import SolidPhaseSet
-
 from .base_schema import BaseSchema
 from dataclasses import dataclass
 
@@ -16,7 +13,6 @@ from dataclasses import dataclass
 class EnumeratedRxnsModel(BaseSchema):
 
     rxn_set: dict = Field(description="The enumerated reactions")
-    phases: SolidPhaseSet = Field(description="The phases present in the enumerated reactions")
     chem_sys: str = Field(description="The chemical system containing these reactions")
     stability_cutoff: float = Field(description="The energy tolerance for considering a phase stable")
     open_el: Optional[str] = Field(description="An open element")
