@@ -162,6 +162,17 @@ class SolidPhaseSet(PhaseSet):
             add_values_to_dict_by_addition(elemental_amounts, scaled_comp_dict)
         
         return elemental_amounts
+    
+    def mole_amts_to_el_fracs(self, mole_amts: Dict[str, float]) -> Dict[str, float]:
+        """Gives fractional elemental composition from molar amts
+
+        Args:
+            mole_amts (Dict[str, float]): A map of phase to number of
+
+        Returns:
+            Dict[str, float]: A map of element to fractional amount
+        """
+        return normalize_dict(self.mole_amts_to_el_amts(mole_amts))
 
     def vol_amts_to_el_amts(self, vol_amts: Dict[str, float]) -> Dict[str, float]:
         """Converts a set of phases with associated volumes to the moles of each
