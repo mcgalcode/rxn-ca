@@ -1,1 +1,0 @@
-from .automaton_store import AutomatonStore
