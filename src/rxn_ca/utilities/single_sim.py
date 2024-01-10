@@ -17,7 +17,7 @@ def run_single_sim(recipe: ReactionRecipe,
                    base_reactions: ReactionSet = None,
                    reaction_lib: ReactionLibrary = None,
                    initial_simulation: Simulation = None,
-                   phase_set: SolidPhaseSet = None):
+                   phase_set: SolidPhaseSet = None) -> RxnCAResultDoc:
 
     if base_reactions is None and reaction_lib is None:
         raise ValueError("Must provide either base_reactions or reaction_lib")
@@ -45,8 +45,8 @@ def run_single_sim(recipe: ReactionRecipe,
 
         initial_simulation = setup_reaction(
             reaction_lib.phases,
-            recipe.simulation_size,
-            phase_mole_ratios = recipe.reactant_amounts,
+            precursor_mole_ratios = recipe.reactant_amounts,
+            size = recipe.simulation_size,
         )
 
     print(f'================= RUNNING SIMULATION =================')

@@ -2,8 +2,7 @@ from monty.json import MSONable
 from dataclasses import dataclass, field
 from .heating import HeatingSchedule
 from typing import Dict, List
-from ..phases import DEFAULT_GASES
-from ..computing.utils.functions import format_chem_sys
+from ..utilities.helpers import format_chem_sys
 from ..reactions.scorers import TammanHuttigScoreErf, TammanHuttigScoreExponential, TammanHuttigScoreSoftplus
 import json
 
@@ -28,9 +27,8 @@ class ReactionRecipe(MSONable):
 
     heating_schedule: HeatingSchedule
     reactant_amounts: Dict[str, float]
-    particle_size: float
     chem_sys: str
-    simulation_size: int
+    simulation_size: int = 15
     num_realizations: int = 3
     exclude_phases: List[str] = field(default_factory=list)
     exclude_theoretical: bool = True

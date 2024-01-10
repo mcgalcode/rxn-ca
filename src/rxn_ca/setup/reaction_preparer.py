@@ -8,6 +8,7 @@ from ..analysis.reaction_step_analyzer import ReactionStepAnalyzer
 from ..core.constants import VOLUME, VOL_MULTIPLIER
 from pylattica.structures.square_grid import DiscreteGridSetup, PseudoHexagonalNeighborhoodBuilder2D, PseudoHexagonalNeighborhoodBuilder3D
 from pylattica.core import AsynchronousRunner, Simulation
+from pylattica.discrete.discrete_step_analyzer import DiscreteStepAnalyzer
 
 from .volume_tuning_controller import VolumeTuningController
 from .phase_growth_controller import PhaseGrowthController
@@ -62,7 +63,8 @@ class ReactionPreparer():
             buffer = 1,
         )
 
-        analyzer = ReactionStepAnalyzer(self.phase_set)            
+        discrete_analzyer = DiscreteStepAnalyzer()
+        rxn_step_analyzer = ReactionStepAnalyzer(self.phase_set)            
 
         simulation.state.set_general_state({ VOL_MULTIPLIER: volume_multiplier })
         
@@ -79,7 +81,7 @@ class ReactionPreparer():
             background_phase=self.phase_set.FREE_SPACE,
         )
 
-        empty_count = analyzer.cell_count(simulation.state, self.phase_set.FREE_SPACE)
+        empty_count = discrete_analzyer.cell_count(simulation.state, self.phase_set.FREE_SPACE)
 
         runner = AsynchronousRunner()
 
@@ -88,10 +90,10 @@ class ReactionPreparer():
             print(f'Filling remaining {empty_count} vacant cells...')
             res = runner.run(simulation.state, controller, num_steps=3 * int(size**3 / 2))
             simulation = Simulation(res.last_step, simulation.structure)
-            empty_count = analyzer.cell_count(simulation.state, self.phase_set.FREE_SPACE)
+            empty_count = discrete_analzyer.cell_count(simulation.state, self.phase_set.FREE_SPACE)
 
         assert simulation.state.get_general_state().get(VOL_MULTIPLIER) == volume_multiplier
-        print(f"Simulation is filled! Total volume is {analyzer.get_total_volume(simulation.state)}")
+        print(f"Simulation is filled! Total volume is {rxn_step_analyzer.get_total_volume(simulation.state)}")
 
         # At this stage, we check to see how close we are
         # if we are not close, we randomly adjust cells to get closer to the 
@@ -124,7 +126,7 @@ class ReactionPreparer():
             return close
         
 
-        done = _assess_convergence(analyzer, simulation)
+        done = _assess_convergence(rxn_step_analyzer, simulation)
 
         if done:
             print("Converged!")
@@ -147,7 +149,7 @@ class ReactionPreparer():
             res = runner.run(simulation.state, tuner_controller, num_steps=5 * int(size**3))
             simulation = Simulation(res.last_step, simulation.structure)
 
-            close = _assess_convergence(analyzer, simulation)
+            close = _assess_convergence(rxn_step_analyzer, simulation)
             tries_remaining = tries_remaining - 1
 
         if tries_remaining == 0 and not close:
