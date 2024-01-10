@@ -1,11 +1,11 @@
-import matplotlib.pyplot as plt
+from __future__ import annotations
+
 import plotly.graph_objects as go
 from plotly.graph_objs.layout import YAxis,XAxis,Margin
 
 from ..phases.solid_phase_set import SolidPhaseSet
 from ..core.reaction_result import ReactionResult
 from ..core.heating import HeatingSchedule
-from .bulk_step_analyzer import BulkReactionStepAnalyzer
 from .reaction_step_analyzer import ReactionStepAnalyzer
 
 from ..computing.schemas.ca_result_schema import RxnCAResultDoc
@@ -23,8 +23,8 @@ class BulkReactionAnalyzer():
     """
 
     @classmethod
-    def from_result_doc_file(cls, fname):
-        doc = RxnCAResultDoc.from_file(fname)
+    def from_result_doc_file(cls, fname: str) -> BulkReactionAnalyzer:
+        doc: RxnCAResultDoc = RxnCAResultDoc.from_file(fname)
         return cls(doc.results, doc.reaction_library.phases, doc.recipe.heating_schedule)
 
     def __init__(self, results: List[ReactionResult], phase_set: SolidPhaseSet, heating_sched: HeatingSchedule):
@@ -33,8 +33,7 @@ class BulkReactionAnalyzer():
         Args:
             rxn_set (ScoredReactionSet):
         """
-        self.bulk_step_analyzer = BulkReactionStepAnalyzer(phase_set)
-        self.single_step_analyzer = ReactionStepAnalyzer(phase_set)
+        self.step_analyzer = ReactionStepAnalyzer(phase_set)
         self.heating_schedule = heating_sched
 
         self.result_length = len(results[0])
@@ -52,7 +51,7 @@ class BulkReactionAnalyzer():
         traces = []
         
         step_idxs, step_groups = self._get_step_groups()
-        amounts = [self.bulk_step_analyzer.elemental_composition(sg) for sg in step_groups]
+        amounts = [self.step_analyzer.get_molar_elemental_composition(sg) for sg in step_groups]
         for el in elements:
             ys = [a.get(el, 0) for a in amounts]
             traces.append((step_idxs, ys, el))
@@ -175,30 +174,27 @@ class BulkReactionAnalyzer():
         step_idxs, step_groups = self._get_step_groups()
 
         traces = []
-        molar_breakdowns = [self.bulk_step_analyzer.molar_fractional_breakdown(sg) for sg in step_groups]
+        mole_fraction_breakdowns = [self.step_analyzer.get_all_mole_fractions(sg) for sg in step_groups]
 
         if phases is None:
             phases = set()
-            for bd in molar_breakdowns:
+            for bd in mole_fraction_breakdowns:
                 phases = phases.union(set(bd.keys()))
         
         for phase in phases:
-            if phase is not SolidPhaseSet.FREE_SPACE:
-                ys = [mb.get(phase, 0) for mb in molar_breakdowns]
-                traces.append((step_idxs, ys, phase))
+            ys = [mb.get(phase, 0) for mb in mole_fraction_breakdowns]
+            traces.append((step_idxs, ys, phase))
 
         filtered_traces = [t for t in traces if max(t[1]) > min_prevalence]
 
         go_traces = [go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines', line=dict(width=4)) for t in filtered_traces]
         return go_traces
     
-    def molar_fractional_breakdown(self, step_no):
-        steps = [r.get_step(step_no) for r in self.results]
-        return self.bulk_step_analyzer.molar_fractional_breakdown(steps)
+    def molar_fractional_breakdown(self, step_no, include_melted: bool = True):
+        return self.step_analyzer.get_all_absolute_molar_amounts(self.get_steps(step_no), include_melted=include_melted)
 
-    def molar_breakdown(self, step_no):
-        steps = [r.get_step(step_no) for r in self.results]
-        return self.bulk_step_analyzer.molar_breakdown(steps)
+    def get_all_absolute_molar_amounts(self, step_no: int, include_melted: bool = True):
+        return self.step_analyzer.get_all_absolute_molar_amounts(self.get_steps(step_no), include_melted=include_melted)
 
     def plot_mole_fractions(self, min_prevalence=0.01) -> None:
         """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
@@ -225,8 +221,11 @@ class BulkReactionAnalyzer():
     def get_steps(self, step_no):
         return [r.get_step(step_no) for r in self.results]
     
-    def get_last_step_group(self):
+    def get_final_steps(self):
         return [r.last_step for r in self.results]
+
+    def get_first_steps(self):
+        return [r.first_step for r in self.results]
 
     def get_molar_phase_traces(self, min_prevalence=0.01, xrd_adjust=True, phases=None, legend="legend1") -> None:
         """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
@@ -237,7 +236,7 @@ class BulkReactionAnalyzer():
         step_idxs, step_groups = self._get_step_groups()
         
         traces = []
-        molar_breakdowns = [self.bulk_step_analyzer.molar_breakdown(step_group) for step_group in step_groups]
+        molar_breakdowns = [self.step_analyzer.get_all_absolute_molar_amounts(step_group) for step_group in step_groups]
 
         if phases is None:
             phases = set()
@@ -287,7 +286,7 @@ class BulkReactionAnalyzer():
     
     def get_mole_trace(self, phase_name, xrd_adjust=False):
         step_idxs, step_groups = self._get_step_groups()
-        molar_breakdowns = [self.bulk_step_analyzer.molar_breakdown(step_group) for step_group in step_groups]
+        molar_breakdowns = [self.step_analyzer.get_all_absolute_molar_amounts(step_group) for step_group in step_groups]
 
         ys = np.array([mb.get(phase_name, 0) for mb in molar_breakdowns])
             
@@ -301,7 +300,7 @@ class BulkReactionAnalyzer():
         step_idxs, step_groups = self._get_step_groups()
 
         traces = []
-        molar_breakdowns = [self.bulk_step_analyzer.molar_fractional_breakdown(sg) for sg in step_groups]
+        molar_breakdowns = [self.step_analyzer.get_all_mole_fractions(sg) for sg in step_groups]
 
 
         phases = set()
@@ -364,7 +363,7 @@ class BulkReactionAnalyzer():
         )
         
         traces = []
-        vol_breakdowns = [self.bulk_step_analyzer.phase_volumes(step_group) for step_group in step_groups]
+        vol_breakdowns = [self.step_analyzer.get_all_absolute_phase_volumes(step_group) for step_group in step_groups]
 
         phases = set()
         for bd in vol_breakdowns:

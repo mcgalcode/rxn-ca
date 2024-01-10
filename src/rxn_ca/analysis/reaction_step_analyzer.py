@@ -40,6 +40,9 @@ class ReactionStepAnalyzer(DiscreteStepAnalyzer):
                         phase_amts[phase] = vol
 
         return phase_amts
+
+    def get_absolute_phase_volume(self, step_group: Union[List[SimulationState], SimulationState], phase: str, include_melted = True):
+        return self.get_all_absolute_phase_volumes(step_group, include_melted=include_melted).get(phase)
     
     def get_total_volume(self, step_group: Union[List[SimulationState], SimulationState], include_melted = True):
         return sum(self.get_all_absolute_phase_volumes(step_group, include_melted=include_melted).values())
@@ -47,13 +50,19 @@ class ReactionStepAnalyzer(DiscreteStepAnalyzer):
     def get_all_volume_fractions(self, step_group: Union[List[SimulationState], SimulationState], include_melted = True):
         vols = self.get_all_absolute_phase_volumes(step_group, include_melted=include_melted)
         return normalize_dict(vols)
+    
+    def get_phase_volume_fraction(self, step_group: Union[List[SimulationState], SimulationState], phase: str, include_melted = True):
+        return self.get_all_volume_fractions(step_group, include_melted=include_melted).get(phase)
 
     def get_all_absolute_molar_amounts(self, step_group: Union[List[SimulationState], SimulationState], include_melted = True):
         phase_abs_vols = self.get_all_absolute_phase_volumes(step_group, include_melted=include_melted)
         return self.phase_set.vol_amts_to_moles(phase_abs_vols)
 
-    def get_mole_fraction(self, step_group: Union[List[SimulationState], SimulationState], phase, include_melted = True):
-        return self.get_mole_fractions(step_group, include_melted=include_melted).get(phase)
+    def get_absolute_molar_amt(self, step_group: Union[List[SimulationState], SimulationState], phase: str, include_melted = True):
+        return self.get_all_absolute_molar_amounts(step_group, include_melted=include_melted).get(phase)
+
+    def get_mole_fraction(self, step_group: Union[List[SimulationState], SimulationState], phase: str, include_melted = True):
+        return self.get_all_mole_fractions(step_group, include_melted=include_melted).get(phase)
 
     def get_all_mole_fractions(self, step_group: Union[List[SimulationState], SimulationState], include_melted = True):
         phase_moles = self.get_all_absolute_molar_amounts(step_group, include_melted=include_melted)
