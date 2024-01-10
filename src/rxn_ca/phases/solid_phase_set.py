@@ -104,9 +104,9 @@ class SolidPhaseSet(PhaseSet):
         Returns:
             Dict[str, float]: A map of phase to # of vols
         """
-        return { phase: self.moles_tol_vol(amt, phase) for phase, amt in mol_amts.items() }
+        return { phase: self.moles_to_vol(amt, phase) for phase, amt in mol_amts.items() }
 
-    def moles_tol_vol(self, moles: float, phase: str) -> float:
+    def moles_to_vol(self, moles: float, phase: str) -> float:
         """Converts a number of moles of a phase to the equivalent
         volume of that phase
 
@@ -140,7 +140,7 @@ class SolidPhaseSet(PhaseSet):
         Returns:
             Dict[str, float]: A mapping of phase formula to mole amount
         """
-        { phase: self.vol_to_moles(amt, phase) for phase, amt in vol_amts.items() }
+        return { phase: self.vol_to_moles(amt, phase) for phase, amt in vol_amts.items() }
 
     def mole_amts_to_el_amts(self, mole_amts: Dict[str, float]) -> Dict[str, float]:
         """Calculates the moles of each element present in a collection of phases
