@@ -12,18 +12,18 @@ parser = argparse.ArgumentParser(
                     description="Build reaction library from reaction set",
 )
 
-parser.add_argument('-s', '--reaction-set-file')
+parser.add_argument('-e', '--reaction-enumeration-file')
 parser.add_argument('-r', '--recipe-file')
 
 parser.add_argument('-o', '--output-file')
 
 args = parser.parse_args()
 
-reaction_set_file = args.reaction_set_file
+reaction_enumeration_file = args.reaction_enumeration_file
 recipe_file = args.recipe_file
 
 recipe: ReactionRecipe = ReactionRecipe.from_file(recipe_file)
-enumeration: EnumeratedRxnsModel = EnumeratedRxnsModel.from_file(reaction_set_file)
+enumeration: EnumeratedRxnsModel = EnumeratedRxnsModel.from_file(reaction_enumeration_file)
 
 gases = [*recipe.additional_gas_phases, *DEFAULT_GASES]
 
