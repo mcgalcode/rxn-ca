@@ -54,7 +54,7 @@ class PhaseGrowthController(BasicController):
 
             if len(nb_phases) > 0:
                 chosen_phase = None
-                volume_breakdown = self.analyzer.phase_volumes(prev_state, include_melted=False)
+                volume_breakdown = self.analyzer.get_all_absolute_phase_volumes(prev_state, include_melted=False)
 
                 deficient_candidates = []
 

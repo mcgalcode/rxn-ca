@@ -21,17 +21,21 @@ class ReactionPreparer():
     """    
 
     def __init__(self, phase_set: SolidPhaseSet, dim: int = 2):
-        super().__init__(phase_set, dim)
         self.dim = dim
         self.volumes = phase_set.volumes
         self.phase_set: SolidPhaseSet = phase_set
 
     def prepare_reaction(self, 
-            size: int,
-            num_seeds: int,
-            phase_mol_ratios: Dict[str, float],
-            volume_multiplier: float = 1.0
+                         phase_mol_ratios: Dict[str, float],
+                         size: int = 15,
+                         volume_multiplier: float = 1.0
         ) -> Simulation:
+
+        total_vol = size ** 3
+        vol_per_nuc_site = 5
+        num_sites = int(total_vol / vol_per_nuc_site) / 4
+
+        print(f'Nucleating grains at {num_sites} sites')
 
         total_vol_available = size ** self.dim * volume_multiplier
         volume_ratios = self.phase_set.mole_amts_to_vols(phase_mol_ratios)
@@ -52,7 +56,7 @@ class ReactionPreparer():
         setup = DiscreteGridSetup(self.phase_set, dim=self.dim)
         simulation = setup.setup_random_sites(
             size,
-            num_sites_desired=num_seeds,
+            num_sites_desired=num_sites,
             background_spec=self.phase_set.FREE_SPACE,
             nuc_amts=normalized_vol_ratios,
             buffer = 1,
@@ -87,7 +91,7 @@ class ReactionPreparer():
             empty_count = analyzer.cell_count(simulation.state, self.phase_set.FREE_SPACE)
 
         assert simulation.state.get_general_state().get(VOL_MULTIPLIER) == volume_multiplier
-        print(f"Simulation is filled! Total volume is {analyzer.total_volume(simulation.state)}")
+        print(f"Simulation is filled! Total volume is {analyzer.get_total_volume(simulation.state)}")
 
         # At this stage, we check to see how close we are
         # if we are not close, we randomly adjust cells to get closer to the 
@@ -111,9 +115,9 @@ class ReactionPreparer():
     
         def _assess_convergence(analyzer, simulation):
     
-            print("Assessing convergence using volume ratios...")
-            actual = analyzer.get_all_volume_fractions(simulation.state, include_melted=False)
-            ideal = normalized_vol_ratios
+            print("Assessing convergence using volumes...")
+            actual = analyzer.get_all_absolute_phase_volumes(simulation.state, include_melted=False)
+            ideal = desired_phase_vols
 
             close = _check_closeness(ideal, actual)
 

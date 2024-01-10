@@ -30,7 +30,7 @@ class VolumeTuningController(BasicController):
 
     def get_random_site(self, prev_state: SimulationState):
         
-        curr_amt = self.analyzer.phase_volumes(prev_state, include_melted=False)
+        curr_amt = self.analyzer.get_all_absolute_phase_volumes(prev_state, include_melted=False)
 
         deficient_phases = []
 
@@ -59,7 +59,7 @@ class VolumeTuningController(BasicController):
 
         ideal_amt = self.ideal_vol_amts.get(curr_phase)
 
-        curr_amt = self.analyzer.phase_volumes(prev_state, include_melted=False).get(curr_phase)
+        curr_amt = self.analyzer.get_all_absolute_phase_volumes(prev_state, include_melted=False).get(curr_phase)
         if curr_amt < ideal_amt:
             new_vol = curr_vol * self.INC_UP
         elif curr_amt > ideal_amt:
