@@ -1,12 +1,14 @@
-from .reaction_result import ReactionResult
-from .reaction_controller import ReactionController
-from .heating import HeatingSchedule
+from ..core.reaction_result import ReactionResult
+from ..core.reaction_controller import ReactionController
+from ..core.heating import HeatingSchedule
 from ..reactions.reaction_library import ReactionLibrary
-from .melt_and_regrind import melt_and_regrind
+from ..core.melt_and_regrind import melt_and_regrind
+from ..analysis import ReactionStepAnalyzer
 
 from pylattica.core import AsynchronousRunner, Simulation
 
 from typing import List
+import numpy as np
 
 def run_multi(simulation: Simulation,
               reaction_lib: ReactionLibrary,
@@ -31,6 +33,7 @@ def run_multi(simulation: Simulation,
     results = []
 
     starting_state = simulation.state
+    analyzer = ReactionStepAnalyzer(reaction_lib.phases)
     
     for step in heating_schedule.steps:
         print(f'Setting new temperature: {step.temp}')
@@ -42,6 +45,16 @@ def run_multi(simulation: Simulation,
                 reaction_lib.phases,
                 step.temp,
             )
+
+            old_vols = analyzer.get_all_absolute_phase_volumes(result.output)
+            new_vols = analyzer.get_all_absolute_phase_volumes(starting_state)
+            for phase, old_vol in old_vols.items():
+                new_vol = new_vols.get(phase)
+                if not np.isclose(old_vol, new_vol, rtol=0.01):
+                    print(old_vols)
+                    print(new_vols)
+                    raise RuntimeError(f"After melting, volume was not conserved: {phase} {old_vol} -> {new_vol}")
+            
 
         result = runner.run(
             starting_state,
