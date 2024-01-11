@@ -7,7 +7,7 @@ from ..core.constants import VOLUME
 from pylattica.core import SimulationState
 from pylattica.core import BasicController
 from pylattica.core.simulation_state import SimulationState
-from pylattica.discrete import PhaseSet
+from pylattica.discrete import PhaseSet, DiscreteStepAnalyzer
 from pylattica.discrete.state_constants import DISCRETE_OCCUPANCY
 
 class VolumeTuningController(BasicController):
@@ -26,6 +26,7 @@ class VolumeTuningController(BasicController):
         
         self.phase_set = phase_set
         self.analyzer = ReactionStepAnalyzer(self.phase_set)
+        self.discrete_analyzer = DiscreteStepAnalyzer()
         self.ideal_vol_amts = ideal_vol_amts
 
     def get_random_site(self, prev_state: SimulationState):
@@ -43,7 +44,7 @@ class VolumeTuningController(BasicController):
             lambda s: s[DISCRETE_OCCUPANCY] in deficient_phases,
         ]
 
-        valid_sites = self.analyzer.get_sites(
+        valid_sites = self.discrete_analyzer.get_sites(
             prev_state,
             state_criteria = criteria
         )
