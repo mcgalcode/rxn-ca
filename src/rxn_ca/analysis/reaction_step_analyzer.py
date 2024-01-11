@@ -5,7 +5,7 @@ from ..phases.solid_phase_set import SolidPhaseSet
 from ..core.constants import VOLUME, MELTED_AMTS, VOL_MULTIPLIER
 from ..utilities.helpers import normalize_dict
 
-from typing import Union, List
+from typing import Union, List, Dict
 
 class ReactionStepAnalyzer():
 
@@ -43,11 +43,25 @@ class ReactionStepAnalyzer():
     def phases_present(self, step_group: Union[List[SimulationState], SimulationState], include_melted: bool = True):
         return list(self.get_all_absolute_phase_volumes(step_group, include_melted=include_melted).keys())
 
+    def get_absolute_melted_volumes(self, step_group: Union[List[SimulationState], SimulationState], temp: int) -> Dict[str, float]:
+        all_volume = self.get_all_absolute_phase_volumes(step_group, include_melted=True)
+        filtered = { p: v for p, v in all_volume.items() if self.phase_set.is_melted(p, temp) }
+        return filtered
+    
+    def get_absolute_solid_volumes(self, step_group: Union[List[SimulationState], SimulationState], temp: int) -> Dict[str, float]:
+        all_volume = self.get_all_absolute_phase_volumes(step_group, include_melted=True)
+        filtered = { p: v for p, v in all_volume.items() if not self.phase_set.is_melted(p, temp) }
+        return filtered
+
     def get_absolute_phase_volume(self, step_group: Union[List[SimulationState], SimulationState], phase: str, include_melted = True):
         return self.get_all_absolute_phase_volumes(step_group, include_melted=include_melted).get(phase)
     
     def get_total_volume(self, step_group: Union[List[SimulationState], SimulationState], include_melted = True):
         return sum(self.get_all_absolute_phase_volumes(step_group, include_melted=include_melted).values())
+    
+    def get_total_solid_volume(self, step_group: Union[List[SimulationState], SimulationState], temp: int) -> float:
+        solid_vols = self.get_absolute_solid_volumes(step_group, temp)
+        return sum(solid_vols.values())
 
     def get_all_volume_fractions(self, step_group: Union[List[SimulationState], SimulationState], include_melted = True):
         vols = self.get_all_absolute_phase_volumes(step_group, include_melted=include_melted)

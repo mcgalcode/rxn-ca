@@ -40,48 +40,49 @@ class BulkReactionAnalyzer():
         self.results = results
 
     def plot_elemental_amounts(self) -> None:
-        fig = go.Figure()
-        fig.update_layout(width=800, height=800, title="Molar Elemental Amount vs time step")
-        fig.update_layout(yaxis_range=[0,None])
-
-        fig.update_yaxes(title="# of Moles")
-        fig.update_xaxes(title="Simulation Step")
-
-        elements = list(self.single_step_analyzer.elemental_composition(self.results[0].first_step).keys())
+        elements = list(self.step_analyzer.get_molar_elemental_composition(self.results[0].first_step).keys())
         traces = []
         
         step_idxs, step_groups = self._get_step_groups()
         amounts = [self.step_analyzer.get_molar_elemental_composition(sg) for sg in step_groups]
         for el in elements:
             ys = [a.get(el, 0) for a in amounts]
-            traces.append((step_idxs, ys, el))
+            traces.append(go.Scatter(name=el, x=step_idxs, y=ys, mode='lines', line=dict(width=4)))
 
+        max_x = max(set().union([t.x for t in traces]))
+        fig = self._get_plotly_fig(
+            "Simulation Step",
+            "El. Fraction",
+            "Elemental Fractions vs time step",
+            max_x
+        )
 
         for t in traces:
-            fig.add_trace(go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines'))
+            fig.add_trace(t)
 
         fig.show()
+
     
     def plot_elemental_fractions(self) -> None:
-        fig = go.Figure()
-        fig.update_layout(width=800, height=800, title="Elemental Fractions vs time step")
-        fig.update_layout(yaxis_range=[0,None])
-
-        fig.update_yaxes(title="El. Fraction")
-        fig.update_xaxes(title="Simulation Step")
-
-        elements = list(self.single_step_analyzer.elemental_composition_fractional(self.results[0].first_step).keys())
+        elements = list(self.step_analyzer.get_fractional_elemental_composition(self.results[0].first_step).keys())
         traces = []
         
         step_idxs, step_groups = self._get_step_groups()
-        amounts = [self.bulk_step_analyzer.elemental_composition_fractional(sg) for sg in step_groups]
+        amounts = [self.step_analyzer.get_fractional_elemental_composition(sg) for sg in step_groups]
         for el in elements:
             ys = [a.get(el, 0) for a in amounts]
-            traces.append((step_idxs, ys, el))
+            traces.append(go.Scatter(name=el, x=step_idxs, y=ys, mode='lines', line=dict(width=4)))
 
+        max_x = max(set().union([t.x for t in traces]))
+        fig = self._get_plotly_fig(
+            "Simulation Step",
+            "El. Fraction",
+            "Elemental Fractions vs time step",
+            max_x
+        )
 
         for t in traces:
-            fig.add_trace(go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines'))
+            fig.add_trace(t)
 
         fig.show()
 
