@@ -84,6 +84,40 @@ class SolidPhaseSet(PhaseSet):
             bool:
         """
         return not self.experimentally_observed[phase]
+    
+    def is_gas(self, phase: str) -> bool:
+        """Indicates whether or not the supplied phase is a gas
+
+        Args:
+            phase (str): The formula of the phase
+
+        Returns:
+            bool: Whether or not it is a gas
+        """
+        return phase in self.gas_phases
+
+    def get_melted_phases(self, temp: int) -> List[str]:
+        """Return the subset of phases which are melted at the supplied temp
+
+        Args:
+            temp (int): The temperature
+
+        Returns:
+            List[str]: The melted phases
+        """
+        return [p for p in self.phases if self.is_melted(p, temp)]
+    
+    def is_melted(self, phase: str, temp: int) -> bool:
+        """Indicates whether or not the supplied phase is melted at the supplied temp
+
+        Args:
+            phase (str): The phase
+            temp (int): The temperature
+
+        Returns:
+            bool: Is it melted?
+        """
+        return temp > self.get_melting_point(phase)
 
     def get_theoretical_phases(self) -> List[str]:
         """Returns the phases inside this SolidPhaseSet that are marked
