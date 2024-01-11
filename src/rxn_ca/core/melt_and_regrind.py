@@ -29,10 +29,10 @@ def calculate_melted_fraction(step: SimulationState, phases: SolidPhaseSet, temp
 def calculate_solid_ratio(step: SimulationState, phases: SolidPhaseSet, temp: int):
     analyzer = ReactionStepAnalyzer(phases)
 
-    total_grid_vol = analyzer.get_total_volume(step, include_melted=False)
+    ideal_grid_vol = analyzer.get_ideal_step_volume(step)
     solid_vol = analyzer.get_total_solid_volume(step, temp)
 
-    return solid_vol / total_grid_vol
+    return solid_vol / ideal_grid_vol
 
 def separate_solid_and_melt(step: SimulationState, phases: SolidPhaseSet, temp: int):
     analyzer = ReactionStepAnalyzer(phases)
