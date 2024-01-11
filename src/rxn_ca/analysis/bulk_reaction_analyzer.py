@@ -39,6 +39,9 @@ class BulkReactionAnalyzer():
         self.result_length = len(results[0])
         self.results = results
 
+    def _get_trace(self, name, xs, ys, legend="legend1"):
+        return go.Scatter(name=name, x=xs, y=ys, mode='lines', line=dict(width=4), legend=legend)
+
     def plot_elemental_amounts(self) -> None:
         elements = list(self.step_analyzer.get_molar_elemental_composition(self.results[0].first_step).keys())
         traces = []
@@ -47,7 +50,7 @@ class BulkReactionAnalyzer():
         amounts = [self.step_analyzer.get_molar_elemental_composition(sg) for sg in step_groups]
         for el in elements:
             ys = [a.get(el, 0) for a in amounts]
-            traces.append(go.Scatter(name=el, x=step_idxs, y=ys, mode='lines', line=dict(width=4)))
+            traces.append(self._get_trace(el, step_idxs, ys))
 
         max_x = max(set().union([t.x for t in traces]))
         fig = self._get_plotly_fig(
@@ -71,7 +74,7 @@ class BulkReactionAnalyzer():
         amounts = [self.step_analyzer.get_fractional_elemental_composition(sg) for sg in step_groups]
         for el in elements:
             ys = [a.get(el, 0) for a in amounts]
-            traces.append(go.Scatter(name=el, x=step_idxs, y=ys, mode='lines', line=dict(width=4)))
+            traces.append(self._get_trace(el, step_idxs, ys))
 
         max_x = max(set().union([t.x for t in traces]))
         fig = self._get_plotly_fig(
@@ -188,7 +191,7 @@ class BulkReactionAnalyzer():
 
         filtered_traces = [t for t in traces if max(t[1]) > min_prevalence]
 
-        go_traces = [go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines', line=dict(width=4)) for t in filtered_traces]
+        go_traces = [self._get_trace(t[2], t[0], t[1]) for t in filtered_traces]
         return go_traces
     
     def molar_fractional_breakdown(self, step_no, include_melted: bool = True):
@@ -252,12 +255,11 @@ class BulkReactionAnalyzer():
                     comp = Composition(phase)
                     ys = ys * comp.num_atoms
 
-                traces.append((step_idxs, ys, phase))
+                if max(ys) > min_prevalence:
+                    t = self._get_trace(phase, step_idxs, ys, legend=legend)
+                    traces.append(t)
 
-        filtered_traces = [t for t in traces if max(t[1]) > min_prevalence]
-
-        go_traces = [go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines', line=dict(width=4), legend=legend) for t in filtered_traces]
-        return go_traces
+        return traces
     
 
     def plot_molar_phase_amounts(self, min_prevalence=0.01, xrd_adjust=False, phases=None) -> None:
@@ -378,7 +380,7 @@ class BulkReactionAnalyzer():
         filtered_traces = [t for t in traces if max(t[1]) > 0.1]
 
         for t in filtered_traces:
-            fig.add_trace(go.Scatter(name=t[2], x=t[0], y=t[1], mode='lines'))
+            fig.add_trace(self._get_trace(t[2], t[0], t[1]))
 
         fig.show()        
 
