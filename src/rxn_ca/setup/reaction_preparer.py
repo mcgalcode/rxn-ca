@@ -6,6 +6,7 @@ from pylattica.core.simulation import Simulation
 from ..phases.solid_phase_set import SolidPhaseSet
 from ..analysis.reaction_step_analyzer import ReactionStepAnalyzer
 from ..core.constants import VOLUME, VOL_MULTIPLIER
+from .constants import VOLUME_TOLERANCE_FRAC, VOLUME_TOLERANCE_ABS
 from pylattica.structures.square_grid import DiscreteGridSetup, PseudoHexagonalNeighborhoodBuilder2D, PseudoHexagonalNeighborhoodBuilder3D
 from pylattica.core import AsynchronousRunner, Simulation
 from pylattica.discrete.discrete_step_analyzer import DiscreteStepAnalyzer
@@ -21,7 +22,7 @@ class ReactionPreparer():
     (which are interpreted as molar quantities) to volume ratios
     """    
 
-    def __init__(self, phase_set: SolidPhaseSet, dim: int = 2):
+    def __init__(self, phase_set: SolidPhaseSet, dim: int = 3):
         self.dim = dim
         self.volumes = phase_set.volumes
         self.phase_set: SolidPhaseSet = phase_set
@@ -32,7 +33,7 @@ class ReactionPreparer():
                          volume_multiplier: float = 1.0
         ) -> Simulation:
 
-        total_vol = size ** 3
+        total_vol = size ** self.dim
         vol_per_nuc_site = 5
         num_sites = int(total_vol / vol_per_nuc_site) / 4
 
@@ -105,13 +106,14 @@ class ReactionPreparer():
             table = []
             for phase, ideal_amt in ideal_amts.items():
                 actual = actual_amts.get(phase, 0)
-                diff = np.abs(ideal_amt - actual) / ideal_amt
-                if diff > 0.01:
+                abs_diff = np.abs(ideal_amt - actual)
+                frac_diff = abs_diff / ideal_amt
+                if abs_diff > VOLUME_TOLERANCE_ABS or frac_diff > VOLUME_TOLERANCE_FRAC:
                     close = False
                 
-                table.append([phase, ideal_amt, actual, diff])
+                table.append([phase, ideal_amt, actual, abs_diff, frac_diff])
 
-            print(tabulate(table, headers=["Phase", "Target Amt.", "Current Amt.", "Frac. Diff."])) 
+            print(tabulate(table, headers=["Phase", "Target Amt.", "Current Amt.", "Abs. Diff.", "Frac. Diff."])) 
                         
             return close
     

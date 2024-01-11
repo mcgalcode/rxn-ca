@@ -4,6 +4,7 @@ import random
 
 from ..analysis.reaction_step_analyzer import ReactionStepAnalyzer
 from ..core.constants import VOLUME
+from .constants import VOLUME_TOLERANCE_ABS, VOLUME_TOLERANCE_FRAC
 from pylattica.core import SimulationState
 from pylattica.core import BasicController
 from pylattica.core.simulation_state import SimulationState
@@ -15,8 +16,6 @@ class VolumeTuningController(BasicController):
     INC_UP = 1.01
     INC_DOWN = 0.99
     MAX_ADJUSTMENTS = 50
-
-    TOL_FRAC = 0.01
 
     def __init__(
         self,
@@ -37,7 +36,8 @@ class VolumeTuningController(BasicController):
 
         for phase, ideal_vol in self.ideal_vol_amts.items():
             curr_vol = curr_amt.get(phase)
-            if np.abs(curr_vol - ideal_vol) / ideal_vol > self.TOL_FRAC:
+            diff = np.abs(curr_vol - ideal_vol)
+            if  diff > VOLUME_TOLERANCE_ABS or diff / ideal_vol > VOLUME_TOLERANCE_FRAC:
                 deficient_phases.append(phase)
         
         criteria = [
