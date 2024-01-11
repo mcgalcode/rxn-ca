@@ -4,6 +4,7 @@ import random
 from typing import Dict, List, Tuple
 from pylattica.discrete.state_constants import DISCRETE_OCCUPANCY
 from pylattica.core.periodic_structure import PeriodicStructure
+from pylattica.core.constants import GENERAL, SITE_ID, SITES
 from pylattica.core.simulation_state import SimulationState
 from pylattica.structures.square_grid.neighborhoods import VonNeumannNbHood2DBuilder, VonNeumannNbHood3DBuilder
 from pylattica.core.basic_controller import BasicController
@@ -11,9 +12,11 @@ from pylattica.core.basic_controller import BasicController
 from .normalizers import normalize
 from ..phases.solid_phase_set import SolidPhaseSet
 from .reaction_result import ReactionResult
-from .reaction_setup import VOLUME
+from .constants import VOLUME, GASES_EVOLVED, GASES_CONSUMED
 from ..reactions import ScoredReactionSet, ScoredReaction
-from ..phases.gasses import DEFAULT_GASES
+
+from dataclasses import dataclass, field
+from copy import copy
 
 def choose_from_list(choices, scores):
     scores: np.array = np.array(scores)
@@ -29,6 +32,15 @@ def scale_score_by_distance(score, distance):
     return score * 1 / distance ** 2
 
 NB_HOOD_RADIUS = 5
+
+@dataclass
+class SiteInteraction:
+
+    score: float
+    site_states: List[Dict] = field(default_factory=list)
+    reactions: List[ScoredReaction] = field(default_factory=list)
+    atmosphere_reactant: str = None
+    is_no_op: bool = False
 
 
 # TODO: PRECALCULATE ALL POSSIBLE REACTIONS, UPDATE
@@ -55,29 +67,16 @@ class ReactionController(BasicController):
         scored_rxns: ScoredReactionSet = None,
         inertia = 1,
         open_species = {},
-        free_species = None,
     ) -> None:
-        
-        if free_species is None:
-            self.free_species = DEFAULT_GASES
-        else:
-            self.free_species = free_species
-
-        print(f'Interpreting {self.free_species} as gaseous in this reaction')
-
         self.rxn_set = scored_rxns
-        
         self.structure = structure
         nb_hood_builder = ReactionController.get_neighborhood_from_structure(structure)
 
         self.nb_graph = nb_hood_builder.get(structure)
         self.inertia = inertia
+        # Defines the atmosphere
+        self.effective_open_distances = copy(open_species)
 
-        # proxy for partial pressures
-        self.effective_open_distances = {}
-        for specie, strength in open_species.items():
-            self.effective_open_distances[specie] = strength
-    
     def set_rxn_set(self, rxn_set: ScoredReactionSet):
         self.rxn_set = rxn_set
 
@@ -87,142 +86,136 @@ class ReactionController(BasicController):
     def get_state_update(self, site_id: int, prev_state: SimulationState):
         np.random.seed(None)
 
-        center_site_state = prev_state.get_site_state(site_id)
-
-        center_species = center_site_state[DISCRETE_OCCUPANCY]
-
-        if center_species == SolidPhaseSet.FREE_SPACE:
-            return {}
-        else:
-            possible_reactions = self.rxns_at_site(site_id, prev_state)
-            chosen_rxn = self.choose_reaction(possible_reactions)
-            rxns: List[ScoredReaction] = chosen_rxn["reactions"]
-            if rxns[0].is_identity:
-                return {}
-            
-            rxn = choose_from_list(rxns, [rxn.competitiveness for rxn in rxns])
-
-            # rxn = rxns[np.argmax([rxn.competitiveness for rxn in rxns])]
-            site_updates = {
-                site_id: self.get_cell_updates(center_site_state, rxn),
-            }
-            
-            if not chosen_rxn['open_el']:
-                other_state = chosen_rxn['other_site_state']
-                other_site_id = other_state["_site_id"]
-                site_updates[other_site_id] = self.get_cell_updates(other_state, rxn)
-
-            return site_updates
-
-
-    def get_rxns_from_step(self, simulation_state, coords):
-        site_id = self.structure.site_at(coords)['_site_id']
-        return self.rxns_at_site(site_id, simulation_state)
-
-    def rxns_at_site(self, site_id: int, state: SimulationState):
-        curr_state = state.get_site_state(site_id)
-        this_phase = curr_state[DISCRETE_OCCUPANCY]
-
-        # Look through neighborhood, enumerate possible reactions
-        rxn_choices = []
-
-        for nb_id, distance in self.nb_graph.neighbors_of(site_id, include_weights=True):
-
-            site_state = state.get_site_state(nb_id)
-            neighbor_phase = site_state[DISCRETE_OCCUPANCY]
-            rxns, score = self.get_rxn_and_score([neighbor_phase, this_phase], distance, this_phase)
-            rxn_choices.append({
-                'other_site_state': site_state,
-                'reactions': rxns,
-                'best_score': score,
-                'other_phase': neighbor_phase,
-                'open_el': False
-            })
-
-        # Readd open species reactions later
-        possible_reactions = [*rxn_choices, *self.rxns_with_open_species(this_phase)]
-        # print(possible_reactions)
-
-        # Always include the identity reaction
-        identity = self.rxn_set.get_reactions([this_phase])
-        possible_reactions.append({
-            'other_site_state': curr_state,
-            'reactions': identity,
-            'best_score': identity[0].competitiveness,
-            'other_phase': neighbor_phase,
-            'open_el': False
-        })
-
-        return possible_reactions
-
-    def rxns_with_open_species(self, this_phase):
-        rxn_choices = []
-        for specie, dist in self.effective_open_distances.items():
-            rxns, score = self.get_rxn_and_score([this_phase, specie], dist, this_phase)
-            rxn_choices.append({
-                'reactions': rxns,
-                'best_score': score,
-                'other_site_state': None,
-                'other_phase': None,
-                'open_el': True
-            })
-
-        return rxn_choices
-
-    def choose_reaction(self, rxns_and_scores: List[Dict]) -> Tuple[ScoredReaction, int, str]:
-        scores: list[float] = [
-            rxn['best_score'] for rxn in rxns_and_scores
-        ]
-        return choose_from_list(rxns_and_scores, scores)
-    
-    def get_cell_updates(self, cell_state, reaction: ScoredReaction):
+        site_state = prev_state.get_site_state(site_id)
+        species = site_state[DISCRETE_OCCUPANCY]
         updates = {}
-        
-        current_spec = cell_state[DISCRETE_OCCUPANCY]
-        current_vol = cell_state[VOLUME]
 
-        # The current site should be replaced if a randomly chosen reactant is the current species
-        current_phase_replacement = self.get_phase_replacement_from_reaction(reaction, current_spec, current_vol)
+        if species == SolidPhaseSet.FREE_SPACE:
+            return updates
 
-        if current_phase_replacement is not None:
-            volume_ratio = reaction.solid_product_reactant_stoich_ratio
-            updates[DISCRETE_OCCUPANCY] = current_phase_replacement
-            updates[VOLUME] = volume_ratio * cell_state[VOLUME]
+        # Get the set of possible interactions - cell-cell reactions,cell-gas reactions and no-ops
+        possible_interactions = self.possible_interactions_at_site(site_id, prev_state)
+        selected_interaction = self.choose_interaction(possible_interactions)
+
+        if selected_interaction.is_no_op:
+            return updates
         
+        updates[GENERAL] = {}
+        updates[SITES] = {}
+
+        # Select a reaction - recall the convex reaction hull: there are often
+        # many possible reactions between two precursors
+        rxns: List[ScoredReaction] = selected_interaction.reactions
+        selected_reaction: ScoredReaction = choose_from_list(rxns, [rxn.competitiveness for rxn in rxns])
+
+        # Proceed this reaction at all relevant site states
+        for site_state in selected_interaction.site_states:
+            site_species = site_state[DISCRETE_OCCUPANCY]
+            site_vol     = site_state[VOLUME]
+            site_id      = site_state[SITE_ID]
+
+            if not self.should_reaction_proceed(selected_reaction, site_species, site_vol):
+                continue
+
+            product_phase  = self.get_product_from_reaction(selected_reaction)
+            product_volume = selected_reaction.convert_reactant_amt_to_product_amt(site_species, site_vol, product_phase)
+
+            # If it's a gaseous product, do some accounting to maintain mass balance
+            # then replace the phase with empty space
+            if self.rxn_set.phases.is_gas(product_phase):
+                prev_gas_amts = prev_state.get_general_state(GASES_EVOLVED)
+                if product_phase in prev_gas_amts:
+                    new_product_gas_amt = prev_gas_amts[product_phase] + product_volume
+                else:
+                    new_product_gas_amt = product_volume
+
+                updates[GENERAL][GASES_EVOLVED] = {
+                    product_phase: new_product_gas_amt
+                }
+                updates[SITES][site_id] = {
+                    DISCRETE_OCCUPANCY: SolidPhaseSet.FREE_SPACE,
+                }
+            
+            # Otherwise, if there is a selected product it must be solid, so just replace
+            # the old phase with the new one and the updated volume
+            elif product_phase is not None:
+                updates[SITES][site_id] = {
+                    DISCRETE_OCCUPANCY: product_phase,
+                    VOLUME: product_volume
+                }
+            
         return updates
 
+    def possible_interactions_at_site(self, site_one_id: int, state: SimulationState):
+        site_one_state = state.get_site_state(site_one_id)
+        site_one_phase = site_one_state[DISCRETE_OCCUPANCY]
+
+        # Look through neighborhood, enumerate possible reactions
+        possible_interactions = []
+
+        for nb_id, distance in self.nb_graph.neighbors_of(site_one_id, include_weights=True):
+            site_two_state = state.get_site_state(nb_id)
+            site_two_phase = site_two_state[DISCRETE_OCCUPANCY]
+            possible_reactions = self.rxn_set.get_reactions([site_two_phase, site_one_phase])
+
+            if len(possible_reactions) > 0 and not possible_reactions[0].is_identity:
+                interaction_score = self.adjust_score_for_distance(possible_reactions[0].competitiveness, distance)
+                interaction = SiteInteraction(
+                    site_states=[site_one_state, site_two_state],
+                    reactions=possible_reactions,
+                    atmosphere_reactant=None,
+                    score=interaction_score
+                )
+            else:
+                interaction = SiteInteraction(
+                    is_no_op=True,
+                    score=self.inertia
+                )
+            
+            possible_interactions.append(interaction)
+
+        # Add interactions with atmosphere
+        possible_interactions = [*possible_interactions, *self.interactions_with_open_species(site_one_state)]
+
+        return possible_interactions
+
+    def interactions_with_open_species(self, site_state: Dict):
+        site_phase = site_state[DISCRETE_OCCUPANCY]
+        interactions = []
+
+        for specie, dist in self.effective_open_distances.items():
+            rxns = self.rxn_set.get_reactions([site_phase, specie])
+            if len(rxns) > 0:
+                interaction_score = self.adjust_score_for_distance(rxns[0].competitiveness, dist)
+                interactions.append(SiteInteraction(
+                    site_states=[site_state],
+                    reactions=rxns,
+                    atmosphere_reactant=specie,
+                    score=interaction_score
+                ))
+
+        return interactions
+
+    def choose_interaction(self, interactions: List[SiteInteraction]) -> SiteInteraction:
+        scores: list[float] = [
+            interaction.score for interaction in interactions
+        ]
+        return choose_from_list(interactions, scores)
     
-    def get_phase_replacement_from_reaction(self, rxn: ScoredReaction, reactant_phase: str, reactant_vol: float) -> Dict:
+    def should_reaction_proceed(self, rxn: ScoredReaction, reactant_phase: str, reactant_vol: float) -> Dict:
         stoich_fraction = rxn.solid_reactant_stoich_fraction(reactant_phase)
         # IMPORTANT: This division ensures that the likelihood of consuming a particular cell decreases with
         # the size of that cell - it should take twice as many "tries" to consume twice as much
         # volume
         adjusted = stoich_fraction / reactant_vol
-        if random.random() < adjusted:
-            prod_sf = np.array([rxn.product_stoich(p) for p in rxn.products])
-            likelihoods: np.array = prod_sf / prod_sf.sum()
-            new_phase_name = str(np.random.choice(list(rxn.products), p=likelihoods))
+        return random.random() < adjusted
+    
+    def get_product_from_reaction(self, rxn: ScoredReaction) -> Dict:
+        products = list(rxn.products)
+        product_stoich_coeffs = np.array([rxn.product_stoich(p) for p in products])
+        likelihoods: np.array = product_stoich_coeffs / product_stoich_coeffs.sum()
+        new_phase_name = str(np.random.choice(products, p=likelihoods))
+        return new_phase_name
 
-            if new_phase_name in self.free_species:
-                new_phase_name = reactant_phase
-            
-            return new_phase_name
-        else:   
-            return None
-
-    def get_rxn_and_score(self, reactants, distance, replaced_phase):
-
-        possible_reactions = self.rxn_set.get_reactions(reactants)
-        if len(possible_reactions) > 0:
-            # This magic number 0 is because the reactions are ordered by score highest to lowest
-            # as returned by the ScoredReactionSet::get_reaction method
-            score = self.get_score_contribution(possible_reactions[0].competitiveness, distance)
-            return (possible_reactions, score)
-        else:
-            # Utilize the self reaction
-            rxns = self.rxn_set.get_reactions([replaced_phase])
-            score = self.get_score_contribution(self.inertia, distance)
-            return (rxns, score)
-
-    def get_score_contribution(self, weight, distance):
-        return weight * 1 / distance ** 3
+    def adjust_score_for_distance(self, score, distance):
+        return score * 1 / distance ** 3
