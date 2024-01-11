@@ -193,6 +193,20 @@ class ScoredReaction:
             return self._reactants[phase] / self.total_solid_reactant_stoich
         except:
             print(phase, str(self))
+    
+    def convert_reactant_amt_to_product_amt(self, reactant: str, reactant_vol: float, product: str) -> float:
+        """Converts a volume of reactant to a volume of product by ratio
+
+        Args:
+            reactant (str): The formula of the reactant
+            reactant_vol (float): The volume to convert,
+            product (str): The product to produce
+
+        Returns:
+            float: The volume of product produced
+        """
+        ratio = self._products[product] / self._reactants[reactant]
+        return reactant_vol * self.solid_product_reactant_stoich_ratio
 
     def any_reactants(self, phases):
         return len(self.reactants.intersection(phases)) > 0

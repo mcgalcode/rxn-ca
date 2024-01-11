@@ -37,30 +37,28 @@ class ScoredReactionSet():
         Args:
             reactions (list[Reaction]):
         """
+        self.phases = phase_set
         self.reactant_map = {}
         self.reactions: List[ScoredReaction] = []
         self.rxn_map = {}
         self._identity_score = identity_score
+        
         # Replace strength of identity reaction with the depth of the hull its in
-
         for r in reactions:
             self.add_rxn(r)
 
-        self.phases = phase_set
-
     def _add_identity(self, phase):
-        if phase not in DEFAULT_GASES and phase is not SolidPhaseSet.FREE_SPACE:
+        if phase not in self.phases.gas_phases and phase is not SolidPhaseSet.FREE_SPACE:
             self_rxn = ScoredReaction.self_reaction(phase, strength = self._identity_score)
             existing = self.get_reactions([phase])
-            if len(existing) > 0 and not any(map(lambda rxn: rxn.is_identity, existing)):
+            if len(existing) > 0 and not any([rxn.is_identity for rxn in existing]):
                 self.add_rxn(self_rxn)
             elif len(existing) == 0:
                 self.add_rxn(self_rxn)        
 
     def rescore(self, scorer):
         rescored = [rxn.rescore(scorer) for rxn in self.reactions if not rxn.is_identity]
-        skip_vols = bool(self.volumes)
-        return ScoredReactionSet(rescored, skip_vols)
+        return ScoredReactionSet(rescored, self.phases, self._identity_score)
 
     def add_rxn(self, rxn: ScoredReaction) -> None:
         reactant_set = frozenset(rxn.reactants)
@@ -116,9 +114,9 @@ class ScoredReactionSet():
         
         return filtered
 
-    def get_reactions(self, reactants: list[str]) -> ScoredReaction:
-        """Given a list of string reaction names, returns a reaction that uses exactly those
-        reactants as precursors.
+    def get_reactions(self, reactants: list[str]) -> List[ScoredReaction]:
+        """Given a list of reactants, returns the list of reactions which
+        consume exactly that set of precursors
 
         Args:
             reactants (list[str]): The list of reactants to match with

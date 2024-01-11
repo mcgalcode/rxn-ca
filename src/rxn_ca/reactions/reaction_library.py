@@ -1,4 +1,5 @@
 from .scored_reaction_set import ScoredReactionSet
+from .scored_reaction import ScoredReaction
 from ..phases.solid_phase_set import SolidPhaseSet
 
 from monty.json import MSONable
@@ -20,8 +21,9 @@ class ReactionLibrary(MSONable):
         )
 
         for t, scored_rxns in d.get('lib').items():
+            rxns = [ScoredReaction.from_dict(r) for r in scored_rxns["reactions"]]
             library.add_rxns_at_temp(
-                ScoredReactionSet.from_dict(scored_rxns),
+                ScoredReactionSet(rxns, phase_set=library.phases),
                 t
             )
 
