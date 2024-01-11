@@ -1,4 +1,4 @@
-from ..core.multi_stage_runner import run_multi
+from .multi_stage_runner import run_multi
 from ..core.recipe import ReactionRecipe
 from ..reactions import ReactionLibrary
 
