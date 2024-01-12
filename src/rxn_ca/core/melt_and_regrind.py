@@ -8,6 +8,8 @@ from pylattica.core.constants import GENERAL, SITES
 from typing import Dict
 from tabulate import tabulate
 
+REGRIND_CUTOFF = 0.15
+
 def _print_dict(d: Dict, key_header: str, val_header: str):
     table = []
     for k, v in d.items():
@@ -37,7 +39,7 @@ def calculate_solid_ratio(step: SimulationState, phases: SolidPhaseSet, temp: in
 def separate_solid_and_melt(step: SimulationState, phases: SolidPhaseSet, temp: int):
     analyzer = ReactionStepAnalyzer(phases)
 
-    print("Total volume of melted material greater than 25%, calculating new state...")
+    print(f"Total volume of melted material greater than {100 * REGRIND_CUTOFF}%, calculating new state...")
     
     melted_vols = analyzer.get_absolute_melted_volumes(step, temp)
     print("\nMelted vols from prev state: ")
@@ -46,8 +48,14 @@ def separate_solid_and_melt(step: SimulationState, phases: SolidPhaseSet, temp: 
     solid_vols = analyzer.get_absolute_solid_volumes(step, temp)
     print("\nSolid vols from prev state: ")
     _print_dict(solid_vols, "Phase", "Volume")
+    print("Total: ", analyzer.get_total_solid_volume(step, temp))
 
     solid_moles = phases.vol_amts_to_moles(solid_vols)
+
+    print(f"Previous real volume: {analyzer.get_total_volume(step)}")
+    print(f"Previous ideal volume: {analyzer.get_ideal_step_volume(step)}")
+    sim_size = analyzer.get_simulation_size(step)
+    print(f'Deduced sim size to be {sim_size}')
 
     print("\nConstructing new state with molar solid composition: ", solid_moles)
     prev_vol_multiplier = step.get_general_state().get(VOL_MULTIPLIER, 1)
@@ -59,7 +67,8 @@ def separate_solid_and_melt(step: SimulationState, phases: SolidPhaseSet, temp: 
     new_solid_state = setup_reaction(
         phases,
         precursor_mole_ratios=solid_moles,
-        vol_multiplier=new_vol_multiplier
+        vol_multiplier=new_vol_multiplier,
+        size=sim_size
     ).state
 
 
@@ -78,7 +87,7 @@ def separate_solid_and_melt(step: SimulationState, phases: SolidPhaseSet, temp: 
 
 def melt_and_regrind(step: SimulationState, phases: SolidPhaseSet, temp: int):
     total_melted_vol_frac = calculate_melted_fraction(step, phases, temp)
-    should_recalc_melted = total_melted_vol_frac > 0.25
+    should_recalc_melted = total_melted_vol_frac > REGRIND_CUTOFF
 
     if should_recalc_melted:
         return separate_solid_and_melt(step, phases, temp)
