@@ -32,7 +32,7 @@ def get_scored_rxns(rxn_set: ReactionSet,
         
         if exclude_theoretical:
             print("Excluding reactions involving theoretical compounds...")
-            scored_rset = scored_rset.exclude_theoretical(lib.phases)
+            scored_rset = scored_rset.exclude_theoretical()
 
         if len(exclude_phases) > 0:
             print(f"Excluding reactions including {exclude_phases}")
