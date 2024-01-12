@@ -25,11 +25,12 @@ class ScoredReactionSet():
     def from_dict(cls, rxn_set_dict):
         return cls(
             [ScoredReaction.from_dict(r) for r in rxn_set_dict["reactions"]],
+            rxn_set_dict.get("phases")
         )
 
     IDENTITY = "IDENTITY"
 
-    def __init__(self, reactions: list[ScoredReaction], phase_set: SolidPhaseSet = None, identity_score = 1):
+    def __init__(self, reactions: list[ScoredReaction], phase_set: SolidPhaseSet, identity_score = 1):
         """Initializes a SolidReactionSet object. Requires a list of possible reactions
         and the elements which should be considered available in the atmosphere of the
         simulation.
@@ -37,6 +38,8 @@ class ScoredReactionSet():
         Args:
             reactions (list[Reaction]):
         """
+        if phase_set is None:
+            raise ValueError("phase_set is required when instantiating a ScoredReactionSet")
         self.phases = phase_set
         self.reactant_map = {}
         self.reactions: List[ScoredReaction] = []
@@ -86,9 +89,9 @@ class ScoredReactionSet():
         
         return filtered
 
-    def exclude_theoretical(self, phase_set: SolidPhaseSet):
-        filtered = ScoredReactionSet([])
-        theoretical_phases = phase_set.get_theoretical_phases()
+    def exclude_theoretical(self):
+        filtered = ScoredReactionSet([], self.phases)
+        theoretical_phases = self.phases.get_theoretical_phases()
         for r in self.reactions:
             containts_theoretical = False
             for p in r.all_phases:
@@ -101,7 +104,7 @@ class ScoredReactionSet():
         return filtered
 
     def exclude_phases(self, phase_list: List[str]):
-        filtered = ScoredReactionSet([])
+        filtered = ScoredReactionSet([], self.phases)
 
         for r in self.reactions:
             contains_exclude = False
@@ -181,6 +184,7 @@ class ScoredReactionSet():
     def as_dict(self):
         return {
             "reactions": [r.as_dict() for r in self.reactions],
+            "phase_set": self.phases.as_dict(),
             "@module": self.__class__.__module__,
             "@class": self.__class__.__name__,
         }
