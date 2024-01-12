@@ -2,14 +2,12 @@ import pytest
 
 from rxn_ca.phases import SolidPhaseSet
 from rxn_ca.core.melt_and_regrind import separate_solid_and_melt, calculate_melted_fraction, calculate_solid_ratio
-from rxn_ca.core.constants import VOL_MULTIPLIER, VOLUME, MELTED_AMTS
+from rxn_ca.core.constants import VOL_MULTIPLIER, MELTED_AMTS
 from rxn_ca.analysis import ReactionStepAnalyzer
 from rxn_ca.utilities.setup_reaction import setup_reaction
 
 import numpy as np
-from pylattica.core import SimulationState
 from pylattica.core.constants import GENERAL
-from pylattica.discrete.state_constants import DISCRETE_OCCUPANCY
 
 @pytest.fixture
 def phases():
@@ -26,7 +24,6 @@ def phases():
             "YMnO3": 800,
         },
     )
-
 
 def test_calculate_melted_fraction(phases):
     sim = setup_reaction(phases, {
