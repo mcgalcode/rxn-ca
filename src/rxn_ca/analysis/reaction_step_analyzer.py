@@ -60,7 +60,7 @@ class ReactionStepAnalyzer():
         return sum(self.get_all_absolute_phase_volumes(step_group, include_melted=include_melted).values())
     
     def get_ideal_step_volume(self, step: SimulationState) -> float:
-        return len(step.all_site_states())
+        return len(step.all_site_states()) * step.get_general_state().get(VOL_MULTIPLIER, 1.0)
     
     def get_total_solid_volume(self, step_group: Union[List[SimulationState], SimulationState], temp: int) -> float:
         solid_vols = self.get_absolute_solid_volumes(step_group, temp)
