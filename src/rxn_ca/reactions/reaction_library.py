@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .scored_reaction_set import ScoredReactionSet
 from .scored_reaction import ScoredReaction
 from ..phases.solid_phase_set import SolidPhaseSet
@@ -5,6 +7,7 @@ from ..phases.solid_phase_set import SolidPhaseSet
 from monty.json import MSONable
 
 import json
+from typing import List, Dict
 
 
 class ReactionLibrary(MSONable):
@@ -38,12 +41,19 @@ class ReactionLibrary(MSONable):
 
 
     def __init__(self, phases: SolidPhaseSet):
-        self.lib = {}
+        self.lib: Dict[int, ScoredReactionSet] = {}
         self.phases = phases
 
     def add_rxns_at_temp(self, rxns: ScoredReactionSet, temp: int) -> int:
         self.lib[int(temp)] = rxns
         return temp
+    
+    def exclude_phases(self, phases) -> ReactionLibrary:
+        lib = ReactionLibrary(self.phases)
+        for t, rxns in self.lib.items():
+            lib.add_rxns_at_temp(rxns.exclude_phases(phases), t)
+        
+        return lib
     
     def get_rxns_at_temp(self, temp: int) -> ScoredReactionSet:
         return self.lib[temp]
