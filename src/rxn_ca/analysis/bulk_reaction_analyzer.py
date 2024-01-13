@@ -55,8 +55,8 @@ class BulkReactionAnalyzer():
         max_x = max(set().union([t.x for t in traces]))
         fig = self._get_plotly_fig(
             "Simulation Step",
-            "El. Fraction",
-            "Elemental Fractions vs time step",
+            "Moles of Element",
+            "Molar Elemental Amts. vs time step",
             max_x
         )
 
@@ -158,7 +158,8 @@ class BulkReactionAnalyzer():
         return fig
     
     def get_heating_trace(self):
-        heating_xs, heating_ys = self.heating_schedule.get_xy_for_plot()
+        step_size = len(self.results[0].first_step.all_site_states())
+        heating_xs, heating_ys = self.heating_schedule.get_xy_for_plot(step_size=step_size)
         return go.Scatter(
             name="Temperature",
             x=heating_xs,
