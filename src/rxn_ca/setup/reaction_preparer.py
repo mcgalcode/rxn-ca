@@ -5,7 +5,7 @@ from pylattica.core.simulation import Simulation
 
 from ..phases.solid_phase_set import SolidPhaseSet
 from ..analysis.reaction_step_analyzer import ReactionStepAnalyzer
-from ..core.constants import VOLUME, VOL_MULTIPLIER
+from ..core.constants import VOLUME, VOL_MULTIPLIER, GASES_CONSUMED, GASES_EVOLVED, MELTED_AMTS
 from .constants import VOLUME_TOLERANCE_FRAC, VOLUME_TOLERANCE_ABS
 from pylattica.structures.square_grid import DiscreteGridSetup, PseudoHexagonalNeighborhoodBuilder2D, PseudoHexagonalNeighborhoodBuilder3D
 from pylattica.core import AsynchronousRunner, Simulation
@@ -67,7 +67,12 @@ class ReactionPreparer():
         discrete_analzyer = DiscreteStepAnalyzer()
         rxn_step_analyzer = ReactionStepAnalyzer(self.phase_set)            
 
-        simulation.state.set_general_state({ VOL_MULTIPLIER: volume_multiplier })
+        simulation.state.set_general_state({
+            MELTED_AMTS: {},
+            VOL_MULTIPLIER: volume_multiplier,
+            GASES_EVOLVED: {},
+            GASES_CONSUMED: {}
+        })
         
         for site_id in simulation.state.site_ids():
             simulation.state.set_site_state(site_id, { VOLUME: 1.0 })
@@ -132,6 +137,7 @@ class ReactionPreparer():
 
         if done:
             print("Converged!")
+            
             return simulation
 
         tuner_controller = VolumeTuningController(
@@ -158,4 +164,5 @@ class ReactionPreparer():
             raise RuntimeError("Could not generate starting state with correct molar amounts!")
         
         print("Converged!")
+
         return simulation
