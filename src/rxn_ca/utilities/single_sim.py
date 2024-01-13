@@ -39,6 +39,9 @@ def run_single_sim(recipe: ReactionRecipe,
     print()
     print()
 
+    if recipe.exclude_phases:
+        reaction_lib = reaction_lib.exclude_phases(recipe.exclude_phases)
+
     if initial_simulation is None:
 
         print("================= SETTING UP SIMULATION =================")
