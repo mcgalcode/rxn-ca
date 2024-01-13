@@ -11,6 +11,10 @@ def test_basic_reaction(get_test_file_path):
 
     result_doc = run_single_sim(recipe, reaction_lib=rxn_lib)
 
+    print(result_doc.results[0]._diffs)
+    for d in result_doc.results[0]._diffs:
+        assert len(d['SITES']) <= 2
+
     result_analyzer = BulkReactionAnalyzer(results=result_doc.results,
                                            phase_set=result_doc.reaction_library.phases,
                                            heating_sched=result_doc.recipe.heating_schedule)
