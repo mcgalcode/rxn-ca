@@ -123,18 +123,16 @@ class ReactionController(BasicController):
             # If it's a gaseous product, do some accounting to maintain mass balance
             # then replace the phase with empty space
             if self.rxn_set.phases.is_gas(product_phase):
-                prev_gas_amts = prev_state.get_general_state(GASES_EVOLVED)
-                if product_phase in prev_gas_amts:
-                    new_product_gas_amt = prev_gas_amts[product_phase] + product_volume
+                gas_amts = prev_state.get_general_state().get(GASES_EVOLVED)
+                if product_phase in gas_amts:
+                    gas_amts[product_phase] = gas_amts[product_phase] + product_volume
                 else:
-                    new_product_gas_amt = product_volume
+                    gas_amts[product_phase] = product_volume
 
-                updates[GENERAL][GASES_EVOLVED] = {
-                    product_phase: new_product_gas_amt
-                }
-                updates[SITES][site_id] = {
-                    DISCRETE_OCCUPANCY: SolidPhaseSet.FREE_SPACE,
-                }
+                updates[GENERAL][GASES_EVOLVED] = gas_amts
+                # updates[SITES][site_id] = {
+                #     DISCRETE_OCCUPANCY: SolidPhaseSet.FREE_SPACE,
+                # }
             
             # Otherwise, if there is a selected product it must be solid, so just replace
             # the old phase with the new one and the updated volume
