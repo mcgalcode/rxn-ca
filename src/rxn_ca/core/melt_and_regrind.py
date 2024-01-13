@@ -1,7 +1,7 @@
 from ..phases import SolidPhaseSet
 from ..utilities.setup_reaction import setup_reaction
 from ..analysis import ReactionStepAnalyzer
-from .constants import TEMPERATURE, MELTED_AMTS, VOL_MULTIPLIER
+from .constants import TEMPERATURE, MELTED_AMTS, VOL_MULTIPLIER, GASES_CONSUMED, GASES_EVOLVED
 
 from pylattica.core import SimulationState
 from pylattica.core.constants import GENERAL, SITES
