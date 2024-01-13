@@ -9,25 +9,20 @@ class HeatingStep(MSONable):
     """
 
     @classmethod
-    def hold(cls, temperature, duration):
-        return cls(duration, temperature)
+    def hold(cls, temperature, duration, stage_length = 1):
+        return [cls(stage_length, temperature) for _ in range(duration)]
     
     @classmethod
-    def sweep(cls, t0, tf, stage_length = 2000, step_size = 100):
+    def sweep(cls, t0, tf, stage_length = 1, temp_step_size = 100):
         if t0 == tf:
             raise ValueError("Initial and final temperatures cannot be the same!")
     
         if tf < t0:
-            step_size = -step_size
+            temp_step_size = -temp_step_size
 
-        temps = [int(s) for s in np.arange(t0,tf,step_size)]
+        temps = [int(s) for s in np.arange(t0,tf,temp_step_size)]
         temps.append(tf)
         return [cls(stage_length, t) for t in temps]
-        
-
-    def __init__(self, duration, temp):
-        self.duration = duration
-        self.temp = temp
 
     @classmethod
     def from_dict(cls, d):
@@ -35,6 +30,10 @@ class HeatingStep(MSONable):
             d["duration"],
             d["temperature"]
         )
+
+    def __init__(self, duration, temp):
+        self.duration = duration
+        self.temp = temp
 
     def as_dict(self):
         return {
@@ -84,7 +83,7 @@ class HeatingSchedule(MSONable):
             if tallied > step_idx:
                 return step.temp
             
-    def get_xy_for_plot(self):
+    def get_xy_for_plot(self, step_size: int):
         curr_x = 0
         xs = []
         ys = []
@@ -93,12 +92,12 @@ class HeatingSchedule(MSONable):
         for step in self.steps:
             xs.append(curr_x)
             ys.append(step.temp)
-            curr_x += step.duration
+            curr_x += step.duration * step_size
             xs.append(curr_x)
             ys.append(step.temp)            
 
         if len(self.steps) == 1:
-            xs.append(self.steps[0].duration)
+            xs.append(self.steps[0].duration * step_size)
             ys.append(self.steps[0].temp)
 
         return xs, ys        
@@ -114,3 +113,6 @@ class HeatingSchedule(MSONable):
         axs.set_title("Heating Schedule")
         axs.set_ylabel("Temperature (K)")
         axs.set_xlabel("Rxn. Coordinate")
+    
+    def __len__(self):
+        return len(self.steps)
