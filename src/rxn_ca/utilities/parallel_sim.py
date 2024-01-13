@@ -18,17 +18,12 @@ _initial_simulation = "initial_simulation"
 
 def _get_result(_):
 
-    try:
-        result: RxnCAResultDoc = run_single_sim(
-            mp_globals[_recipe],
-            reaction_lib=mp_globals.get(_reaction_lib),
-            initial_simulation=mp_globals.get(_initial_simulation)
-        )
-        return result.results[0]
-    except Exception as e:
-        print(e.__traceback__)
-        print("Run failed!")
-        return None
+    result: RxnCAResultDoc = run_single_sim(
+        mp_globals[_recipe],
+        reaction_lib=mp_globals.get(_reaction_lib),
+        initial_simulation=mp_globals.get(_initial_simulation)
+    )
+    return result.results[0]
 
 
 def run_sim_parallel(recipe: ReactionRecipe,
