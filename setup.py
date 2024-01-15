@@ -31,10 +31,8 @@ setup(
         'reaction-network',
         'pymatgen >= 2022.3.29',
         'plotly >= 5.6.0',
-        'jobflow >= 0.1.8',
         'monty',
         'pydantic',
-        'maggma',
     ],
     extras_require={
         "docs": [
