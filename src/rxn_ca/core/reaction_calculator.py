@@ -42,56 +42,24 @@ class SiteInteraction:
     atmosphere_reactant: str = None
     is_no_op: bool = False
 
-
-# TODO: PRECALCULATE ALL POSSIBLE REACTIONS, UPDATE
-# AFTER EACH STEP ONLY AT CELLS THAT HAVE CHANGED
-class ReactionController(BasicController):
-
-    @classmethod
-    def get_neighborhood(cls, nb_builder = VonNeumannNbHood2DBuilder):
-        neighborhood_radius = NB_HOOD_RADIUS
-        print(f'Using neighborhood of size {neighborhood_radius}')
-        return nb_builder(neighborhood_radius)
-
-    @classmethod
-    def get_neighborhood_from_structure(cls, structure: PeriodicStructure, nb_builder = None):
-        if nb_builder is None:
-            if structure.dim == 3:
-                nb_builder = VonNeumannNbHood3DBuilder
-            else:
-                nb_builder = VonNeumannNbHood2DBuilder
-        return cls.get_neighborhood(nb_builder=nb_builder)
+class ReactionCalculator():
 
     def __init__(self,
-        structure: PeriodicStructure,
+        neighborhood_graph,
         scored_rxns: ScoredReactionSet = None,
         inertia = 1,
         open_species = {},
     ) -> None:
         self.rxn_set = scored_rxns
-        self.structure = structure
-        nb_hood_builder = ReactionController.get_neighborhood_from_structure(structure)
-
-        self.nb_graph = nb_hood_builder.get(structure)
         self.inertia = inertia
-        # Defines the atmosphere
+        self.neighborhood_graph = neighborhood_graph
         self.effective_open_distances = copy(open_species)
 
     def set_rxn_set(self, rxn_set: ScoredReactionSet):
         self.rxn_set = rxn_set
 
-    def instantiate_result(self, starting_state: SimulationState):
-        return ReactionResult(starting_state)
-
     def get_state_update(self, site_id: int, prev_state: SimulationState):
-        np.random.seed(None)
-
-        site_state = prev_state.get_site_state(site_id)
-        species = site_state[DISCRETE_OCCUPANCY]
         updates = {}
-
-        if species == SolidPhaseSet.FREE_SPACE:
-            return updates
 
         # Get the set of possible interactions - cell-cell reactions,cell-gas reactions and no-ops
         possible_interactions = self.possible_interactions_at_site(site_id, prev_state)
@@ -151,7 +119,7 @@ class ReactionController(BasicController):
         # Look through neighborhood, enumerate possible reactions
         possible_interactions = []
 
-        for nb_id, distance in self.nb_graph.neighbors_of(site_one_id, include_weights=True):
+        for nb_id, distance in self.neighborhood_graph.neighbors_of(site_one_id, include_weights=True):
             site_two_state = state.get_site_state(nb_id)
             site_two_phase = site_two_state[DISCRETE_OCCUPANCY]
             possible_reactions = self.rxn_set.get_reactions([site_two_phase, site_one_phase])
@@ -177,11 +145,11 @@ class ReactionController(BasicController):
 
         return possible_interactions
 
-    def interactions_with_open_species(self, site_state: Dict):
+    def interactions_with_open_species(self, site_state: Dict, effective_open_distances: Dict):
         site_phase = site_state[DISCRETE_OCCUPANCY]
         interactions = []
 
-        for specie, dist in self.effective_open_distances.items():
+        for specie, dist in effective_open_distances.items():
             rxns = self.rxn_set.get_reactions([site_phase, specie])
             if len(rxns) > 0:
                 interaction_score = self.adjust_score_for_distance(rxns[0].competitiveness, dist)

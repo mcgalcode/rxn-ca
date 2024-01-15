@@ -90,7 +90,7 @@ class TammanHuttigScoreErf(BasicScore):
 
     def score(self, rxn: ComputedReaction):
         phases = [c.reduced_formula for c in rxn.reactants]
-        non_gasses = [p for p in phases if p not in DEFAULT_GASES]
+        non_gasses = [p for p in phases if p not in self.phases.gas_phases]
         mps = [self.phases.get_melting_point(p) for p in non_gasses]
         min_mp = min(mps)
 
@@ -110,8 +110,9 @@ def score_rxns(reactions: ReactionSet, scorer: BasicScore, phase_set: SolidPhase
     scored_reactions = []
 
     for rxn in tqdm(reactions.get_rxns(), desc="Scoring reactions..."):
-        reactants = [r.to_pretty_string() for r in rxn.reactants]
-        if not all([r in DEFAULT_GASES for r in reactants]):
+        reactants = [r.reduced_formula for r in rxn.reactants]
+        non_gases = [r for r in reactants if r not in phase_set.gas_phases]
+        if len(non_gases) > 0:
             scored_rxn = ScoredReaction.from_rxn_network(scorer.score(rxn), rxn, phase_set.volumes)
             scored_reactions.append(scored_rxn)
 

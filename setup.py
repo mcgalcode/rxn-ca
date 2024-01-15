@@ -21,7 +21,7 @@ setup(
     packages=find_packages("src"),
     package_dir={"": "src"},
     package_data={"rxn-ca": ["py.typed"]},
-    scripts=["bin/react"],
+    scripts=["bin/react", "bin/enumerate", "bin/build-library"],
     zip_safe=False,
     include_package_data=True,
     install_requires=[
@@ -31,10 +31,8 @@ setup(
         'reaction-network',
         'pymatgen >= 2022.3.29',
         'plotly >= 5.6.0',
-        'jobflow >= 0.1.8',
         'monty',
         'pydantic',
-        'maggma',
     ],
     extras_require={
         "docs": [

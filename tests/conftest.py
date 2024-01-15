@@ -1,23 +1,19 @@
+from pathlib import Path
 import pytest
+import json
 
-from pylattica.discrete import PhaseSet
-from pylattica.square_grid import DiscreteGridSetup
+from rxn_ca.phases import SolidPhaseSet
 
-from pylattica.square_grid import SimpleSquare2DStructureBuilder, DiscreteGridSetup
-from pylattica.discrete import PhaseSet
+@pytest.fixture()
+def get_test_file_path():
+    def _(file_path: str):
+        return str(Path(__file__).parent / file_path)
 
-@pytest.fixture(scope="module")
-def square_grid_2D_2x2():
-    return SimpleSquare2DStructureBuilder().build(2)
+    return _
 
-@pytest.fixture(scope="module")
-def square_grid_2D_4x4():
-    return SimpleSquare2DStructureBuilder().build(4)
-
-@pytest.fixture(scope="module")
-def simple_phase_set():
-    return PhaseSet(["A", "B", "C", "D"])
-
-@pytest.fixture(scope="module")
-def grid_setup(simple_phase_set):
-    return DiscreteGridSetup(simple_phase_set)
+@pytest.fixture
+def ymno3_phases(get_test_file_path):
+    fpath = get_test_file_path("core/ymno3_phases.json")
+    with open(fpath, 'r+') as f:
+        d = json.load(f)
+        return SolidPhaseSet.from_dict(d)

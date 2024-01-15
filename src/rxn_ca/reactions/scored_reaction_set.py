@@ -25,9 +25,12 @@ class ScoredReactionSet():
     def from_dict(cls, rxn_set_dict):
         return cls(
             [ScoredReaction.from_dict(r) for r in rxn_set_dict["reactions"]],
+            rxn_set_dict.get("phases")
         )
 
-    def __init__(self, reactions: list[ScoredReaction], phase_set: SolidPhaseSet = None, identity_score = 1):
+    IDENTITY = "IDENTITY"
+
+    def __init__(self, reactions: list[ScoredReaction], phase_set: SolidPhaseSet, identity_score = 1):
         """Initializes a SolidReactionSet object. Requires a list of possible reactions
         and the elements which should be considered available in the atmosphere of the
         simulation.
@@ -35,30 +38,30 @@ class ScoredReactionSet():
         Args:
             reactions (list[Reaction]):
         """
+        if phase_set is None:
+            raise ValueError("phase_set is required when instantiating a ScoredReactionSet")
+        self.phases = phase_set
         self.reactant_map = {}
         self.reactions: List[ScoredReaction] = []
         self.rxn_map = {}
+        self._identity_score = identity_score
+        
         # Replace strength of identity reaction with the depth of the hull its in
-
         for r in reactions:
             self.add_rxn(r)
 
-        self.phases = phase_set
-
-        if phase_set is not None:
-            for phase in phase_set.phases:
-                if phase not in DEFAULT_GASES and phase is not SolidPhaseSet.FREE_SPACE:
-                    self_rxn = ScoredReaction.self_reaction(phase, strength = identity_score)
-                    existing = self.get_reactions([phase])
-                    if len(existing) > 0 and not any(map(lambda rxn: rxn.is_identity, existing)):
-                        self.add_rxn(self_rxn)
-                    elif len(existing) == 0:
-                        self.add_rxn(self_rxn)
+    def _add_identity(self, phase):
+        if phase not in self.phases.gas_phases and phase is not SolidPhaseSet.FREE_SPACE:
+            self_rxn = ScoredReaction.self_reaction(phase, strength = self._identity_score)
+            existing = self.get_reactions([phase])
+            if len(existing) > 0 and not any([rxn.is_identity for rxn in existing]):
+                self.add_rxn(self_rxn)
+            elif len(existing) == 0:
+                self.add_rxn(self_rxn)        
 
     def rescore(self, scorer):
         rescored = [rxn.rescore(scorer) for rxn in self.reactions if not rxn.is_identity]
-        skip_vols = bool(self.volumes)
-        return ScoredReactionSet(rescored, skip_vols)
+        return ScoredReactionSet(rescored, self.phases, self._identity_score)
 
     def add_rxn(self, rxn: ScoredReaction) -> None:
         reactant_set = frozenset(rxn.reactants)
@@ -67,6 +70,10 @@ class ScoredReactionSet():
         else:
             self.reactant_map[reactant_set].append(rxn)
             self.reactant_map[reactant_set] = sorted(self.reactant_map[reactant_set], key = lambda rxn: rxn.competitiveness, reverse = True)
+
+        for phase in rxn.all_phases:
+            self._add_identity(phase)
+    
         self.rxn_map[str(rxn)] = rxn
         self.reactions.append(rxn)
 
@@ -82,9 +89,9 @@ class ScoredReactionSet():
         
         return filtered
 
-    def exclude_theoretical(self, phase_set: SolidPhaseSet):
-        filtered = ScoredReactionSet([])
-        theoretical_phases = phase_set.get_theoretical_phases()
+    def exclude_theoretical(self):
+        filtered = ScoredReactionSet([], self.phases)
+        theoretical_phases = self.phases.get_theoretical_phases()
         for r in self.reactions:
             containts_theoretical = False
             for p in r.all_phases:
@@ -97,7 +104,7 @@ class ScoredReactionSet():
         return filtered
 
     def exclude_phases(self, phase_list: List[str]):
-        filtered = ScoredReactionSet([])
+        filtered = ScoredReactionSet([], self.phases)
 
         for r in self.reactions:
             contains_exclude = False
@@ -110,9 +117,9 @@ class ScoredReactionSet():
         
         return filtered
 
-    def get_reactions(self, reactants: list[str]) -> ScoredReaction:
-        """Given a list of string reaction names, returns a reaction that uses exactly those
-        reactants as precursors.
+    def get_reactions(self, reactants: list[str]) -> List[ScoredReaction]:
+        """Given a list of reactants, returns the list of reactions which
+        consume exactly that set of precursors
 
         Args:
             reactants (list[str]): The list of reactants to match with
@@ -177,6 +184,7 @@ class ScoredReactionSet():
     def as_dict(self):
         return {
             "reactions": [r.as_dict() for r in self.reactions],
+            "phase_set": self.phases.as_dict(),
             "@module": self.__class__.__module__,
             "@class": self.__class__.__name__,
         }

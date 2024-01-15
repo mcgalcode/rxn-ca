@@ -1,4 +1,5 @@
 from pylattica.core import SimulationState, SimulationResult
+from pylattica.core.constants import SITES, GENERAL
 
 class ReactionResult(SimulationResult):
     """A class that stores the result of running a simulation. Keeps track of all
@@ -11,8 +12,12 @@ class ReactionResult(SimulationResult):
         diffs = res_dict["diffs"]
         res = ReactionResult(
             SimulationState.from_dict(res_dict["initial_state"]),
-        )        
+        )
         for diff in diffs:
+            if SITES in diff:
+                diff[SITES] = { int(k): v for k, v in diff[SITES].items() }
+            if GENERAL not in diff and SITES not in diff:
+                diff = { int(k): v for k, v in diff.items() }
             res.add_step(diff)
         return res
 

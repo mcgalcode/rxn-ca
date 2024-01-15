@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 from .scored_reaction_set import ScoredReactionSet
+from .scored_reaction import ScoredReaction
 from ..phases.solid_phase_set import SolidPhaseSet
-from rxn_network.reactions.reaction_set import ReactionSet
 
 from monty.json import MSONable
-from dataclasses import dataclass
 
-from rxn_network.reactions.reaction_set import ReactionSet
+import json
+from typing import List, Dict
 
 
 class ReactionLibrary(MSONable):
@@ -22,24 +24,36 @@ class ReactionLibrary(MSONable):
         )
 
         for t, scored_rxns in d.get('lib').items():
+            rxns = [ScoredReaction.from_dict(r) for r in scored_rxns["reactions"]]
             library.add_rxns_at_temp(
-                ScoredReactionSet.from_dict(scored_rxns),
+                ScoredReactionSet(rxns, phase_set=library.phases),
                 t
             )
 
         return library
+    
+    @classmethod
+    def from_file(cls, fpath):
+
+        with open(fpath, 'r+') as f:
+            d = json.load(f)
+            return cls.from_dict(d)
 
 
-    def __init__(self, rxn_set: ReactionSet = None, phases: SolidPhaseSet = None):
-        self.lib = {}
-        if phases is None:
-            self.phases = SolidPhaseSet.from_rxn_set(rxn_set)
-        else:
-            self.phases = phases
+    def __init__(self, phases: SolidPhaseSet):
+        self.lib: Dict[int, ScoredReactionSet] = {}
+        self.phases = phases
 
     def add_rxns_at_temp(self, rxns: ScoredReactionSet, temp: int) -> int:
         self.lib[int(temp)] = rxns
         return temp
+    
+    def exclude_phases(self, phases) -> ReactionLibrary:
+        lib = ReactionLibrary(self.phases)
+        for t, rxns in self.lib.items():
+            lib.add_rxns_at_temp(rxns.exclude_phases(phases), t)
+        
+        return lib
     
     def get_rxns_at_temp(self, temp: int) -> ScoredReactionSet:
         return self.lib[temp]
@@ -62,3 +76,7 @@ class ReactionLibrary(MSONable):
             "phases": self.phases.as_dict(),
             "lib": lib,
         }
+
+    def to_file(self, fpath):
+        with open(fpath, 'w+') as f:
+            json.dump(self.as_dict(), f)

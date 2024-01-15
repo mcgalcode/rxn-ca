@@ -5,5 +5,6 @@ DEFAULT_GASES = [
     "CO",
     "CO2",
     "N2",
-    "Cl2"
+    "Cl2",
+    "H5NO"
 ]
