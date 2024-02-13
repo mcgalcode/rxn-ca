@@ -21,7 +21,7 @@ def test_basic_mass_conservation(get_test_file_path):
 
     initial_el_comp = step_analyzer.get_molar_elemental_composition(result_analyzer.get_first_steps())
 
-    for i in range(0,10000, 100):
+    for i in range(0,len(result_doc.results[0]), 100):
         steps = result_analyzer.get_steps(i)
         elemental_composition = step_analyzer.get_molar_elemental_composition(steps)
         for el, amt in elemental_composition.items():
@@ -43,7 +43,7 @@ def test_parallel_mass_conservation(get_test_file_path):
 
     initial_el_comp = step_analyzer.get_molar_elemental_composition(result_analyzer.get_first_steps())
 
-    for i in range(0,10000, 100):
+    for i in range(0,len(result_doc.results[0]), 100):
         steps = result_analyzer.get_steps(i)
         elemental_composition = step_analyzer.get_molar_elemental_composition(steps)
         for el, amt in elemental_composition.items():

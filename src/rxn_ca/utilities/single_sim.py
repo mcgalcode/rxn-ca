@@ -1,4 +1,4 @@
-from .multi_stage_runner import run_multi
+from .multi_stage_runner import MeltAndRegrindMultiRunner
 from ..core.recipe import ReactionRecipe
 from ..reactions import ReactionLibrary
 
@@ -54,8 +54,8 @@ def run_single_sim(recipe: ReactionRecipe,
 
     print(f'================= RUNNING SIMULATION =================')
 
-
-    result = run_multi(
+    runner = MeltAndRegrindMultiRunner()
+    result = runner.run_multi(
         initial_simulation,
         reaction_lib,
         recipe.heating_schedule

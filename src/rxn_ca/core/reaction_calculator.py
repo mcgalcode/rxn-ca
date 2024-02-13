@@ -145,11 +145,11 @@ class ReactionCalculator():
 
         return possible_interactions
 
-    def interactions_with_open_species(self, site_state: Dict, effective_open_distances: Dict):
+    def interactions_with_open_species(self, site_state: Dict):
         site_phase = site_state[DISCRETE_OCCUPANCY]
         interactions = []
 
-        for specie, dist in effective_open_distances.items():
+        for specie, dist in self.effective_open_distances.items():
             rxns = self.rxn_set.get_reactions([site_phase, specie])
             if len(rxns) > 0:
                 interaction_score = self.adjust_score_for_distance(rxns[0].competitiveness, dist)

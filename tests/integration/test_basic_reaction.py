@@ -11,7 +11,6 @@ def test_basic_reaction(get_test_file_path):
 
     result_doc = run_single_sim(recipe, reaction_lib=rxn_lib)
 
-    print(result_doc.results[0]._diffs)
     for d in result_doc.results[0]._diffs:
         assert len(d['SITES']) <= 2
 
