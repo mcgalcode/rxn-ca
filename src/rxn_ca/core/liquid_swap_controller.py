@@ -1,51 +1,42 @@
-import math
 import numpy as np
 import random
+import math
 from typing import Dict, List, Tuple
 from pylattica.discrete.state_constants import DISCRETE_OCCUPANCY
 from pylattica.core.periodic_structure import PeriodicStructure
 from pylattica.core.constants import GENERAL, SITE_ID, SITES
 from pylattica.core.simulation_state import SimulationState
-from pylattica.structures.square_grid.neighborhoods import VonNeumannNbHood2DBuilder, VonNeumannNbHood3DBuilder
+from pylattica.core.neighborhoods import Neighborhood
+from pylattica.structures.square_grid.neighborhoods import VonNeumannNbHood3DBuilder
 from pylattica.core.basic_controller import BasicController
 
 from ..phases.solid_phase_set import SolidPhaseSet
 from .reaction_result import ReactionResult
-from .constants import VOLUME, GASES_EVOLVED, GASES_CONSUMED
+from .constants import VOLUME
 from ..reactions import ScoredReactionSet
 from .reaction_calculator import ReactionCalculator
+
+def swap_chance(tm_frac):
+    num = (20*tm_frac - 18.5)
+    den = 2 * math.sqrt((20*tm_frac - 18.5) ** 2 + 1)
+    return num / den + 1 / 2
 
 class LiquidSwapController(BasicController):
 
     @classmethod
-    def get_neighborhood(cls, nb_builder = VonNeumannNbHood2DBuilder):
-        neighborhood_radius = 1
-        print(f'Using neighborhood of size {neighborhood_radius}')
-        return nb_builder(neighborhood_radius)
-
-    @classmethod
-    def get_neighborhood_from_structure(cls, structure: PeriodicStructure, nb_builder = None):
-        if nb_builder is None:
-            if structure.dim == 3:
-                nb_builder = VonNeumannNbHood3DBuilder
-            else:
-                nb_builder = VonNeumannNbHood2DBuilder
-        return cls.get_neighborhood(nb_builder=nb_builder)
-
+    def get_neighborhood_from_structure(cls, structure: PeriodicStructure):
+        return VonNeumannNbHood3DBuilder(1).get(structure)
+    
     def __init__(self,
         structure: PeriodicStructure,
-        scored_rxns: ScoredReactionSet = None,
-        inertia = 1,
-        open_species = {}
+        rxn_calculator: ReactionCalculator,
     ) -> None:
-        self.rxn_set = scored_rxns
         self.structure = structure
-        nb_hood_builder = LiquidSwapController.get_neighborhood_from_structure(structure)
-        self.nb_graph = nb_hood_builder.get(structure)
-        self.reaction_calculator = ReactionCalculator(self.nb_graph, scored_rxns, inertia, open_species)
-        # Defines the atmosphere
+        self.reaction_calculator = rxn_calculator
+        self.temperature = None
+
     def set_rxn_set(self, rxn_set: ScoredReactionSet):
-        self.rxn_set = rxn_set
+        self.reaction_calculator.set_rxn_set(rxn_set)
     
     def set_temperature(self, temp: int):
         self.temperature = temp
@@ -63,9 +54,24 @@ class LiquidSwapController(BasicController):
         if species == SolidPhaseSet.FREE_SPACE:
             return updates
         
-        if self.rxn_set.phases.is_melted(species, self.temperature):
-            pass
-            # melt and swap
+        diff = self.temperature / self.reaction_calculator.rxn_set.phases.get_melting_point(species)
+
+        if species == SolidPhaseSet.FREE_SPACE or random.random() < swap_chance(diff):
+            nb_ids = self.reaction_calculator.neighborhood_graph.neighbors_of(site_id)
+
+            other_id = random.choice(nb_ids)
+            other_state = prev_state.get_site_state(other_id)
+
+            updates[SITES] = {
+                site_id: {
+                    DISCRETE_OCCUPANCY: other_state[DISCRETE_OCCUPANCY],
+                    VOLUME: other_state[VOLUME]
+                },
+                other_id: {
+                    DISCRETE_OCCUPANCY: site_state[DISCRETE_OCCUPANCY],
+                    VOLUME: site_state[VOLUME]                    
+                }
+            }
         else:
             updates = self.reaction_calculator.get_state_update(site_id, prev_state)
 

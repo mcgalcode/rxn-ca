@@ -7,6 +7,7 @@ from pylattica.core import SimulationState
 from pylattica.core.constants import GENERAL, SITES
 from typing import Dict
 from tabulate import tabulate
+import numpy as np
 
 REGRIND_CUTOFF = 0.15
 
@@ -88,9 +89,21 @@ def separate_solid_and_melt(step: SimulationState, phases: SolidPhaseSet, temp: 
 def melt_and_regrind(step: SimulationState, phases: SolidPhaseSet, temp: int):
     total_melted_vol_frac = calculate_melted_fraction(step, phases, temp)
     should_recalc_melted = total_melted_vol_frac > REGRIND_CUTOFF
+    analyzer = ReactionStepAnalyzer(phases)
 
     if should_recalc_melted:
-        return separate_solid_and_melt(step, phases, temp)
+        separated = separate_solid_and_melt(step, phases, temp)
+
+        old_vols = analyzer.get_all_absolute_phase_volumes(step)
+        new_vols = analyzer.get_all_absolute_phase_volumes(separated)
+        for phase, old_vol in old_vols.items():
+            new_vol = new_vols.get(phase)
+            if not np.isclose(old_vol, new_vol, rtol=0.011):
+                print(old_vols)
+                print(new_vols)
+                raise RuntimeError(f"After melting, volume was not conserved: {phase} {old_vol} -> {new_vol}")
+        
+        return separated
     else:
         new_solid_state = step.copy()
 
