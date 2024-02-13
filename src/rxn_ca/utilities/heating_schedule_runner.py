@@ -5,44 +5,24 @@ from ..core.heating import HeatingSchedule
 from ..core.constants import GASES_EVOLVED, GASES_CONSUMED, MELTED_AMTS
 from ..reactions.reaction_library import ReactionLibrary
 from ..core.melt_and_regrind import melt_and_regrind
-from ..analysis import ReactionStepAnalyzer
 
-from pylattica.core import AsynchronousRunner, Simulation
+from pylattica.core import AsynchronousRunner, Simulation, BasicController
 
 from typing import List, Callable
 import numpy as np
 
-class MultiRunner():
+class HeatingScheduleRunner():
 
     def __init__(self, middlewares: List[Callable] = []) -> None:
         self._middlewares = middlewares
-    
+        
     def run_multi(self,
                 simulation: Simulation,
                 reaction_lib: ReactionLibrary,
                 heating_schedule: HeatingSchedule,
-                verbose=True,
-                inertia=1,
-                open_gas=None):
-        runner = AsynchronousRunner()
-
-        open_species = {}
-        if open_gas is not None:
-            open_species = {
-                open_gas: 1.0
-            }
-
-        rxn_calculator = ReactionCalculator(
-            ReactionController.get_neighborhood_from_structure(simulation.structure),
-            inertia=inertia,
-            open_species=open_species
-        )
-
-        controller = ReactionController(
-            simulation.structure,
-            rxn_calculator=rxn_calculator
-        )
-        
+                controller: BasicController,
+                verbose=True):
+        runner = AsynchronousRunner()       
         results = []
 
         starting_state = simulation.state
@@ -63,9 +43,10 @@ class MultiRunner():
                 print(f'Setting new temperature: {step.temp}')
             
             prev_temp = step.temp
+            controller.set_temperature(step.temp)
             controller.set_rxn_set(reaction_lib.get_rxns_at_temp(step.temp))
 
-            num_simulation_steps = step_size * step.duration
+            num_simulation_steps = int(step_size * step.duration)
 
             if len(results) > 0:
                 starting_state = results[-1].output
@@ -86,7 +67,7 @@ class MultiRunner():
         result = concatenate_results(results)
         return result
     
-class MeltAndRegrindMultiRunner(MultiRunner):
+class MeltAndRegrindMultiRunner(HeatingScheduleRunner):
 
     def __init__(self) -> None:
         super().__init__([melt_and_regrind])

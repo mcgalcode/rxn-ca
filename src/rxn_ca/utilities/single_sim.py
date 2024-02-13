@@ -1,4 +1,4 @@
-from .multi_stage_runner import MeltAndRegrindMultiRunner
+from .heating_schedule_runner import MeltAndRegrindMultiRunner, HeatingScheduleRunner
 from ..core.recipe import ReactionRecipe
 from ..reactions import ReactionLibrary
 
@@ -8,9 +8,12 @@ from pylattica.core import Simulation
 from rxn_network.reactions.reaction_set import ReactionSet
 
 from ..phases import SolidPhaseSet
+from ..core.reaction_controller import ReactionController
+from ..core.liquid_swap_controller import LiquidSwapController
+from ..core.reaction_calculator import ReactionCalculator
 
 from .get_scored_rxns import get_scored_rxns
-from .setup_reaction import setup_reaction
+from .setup_reaction import setup_reaction, setup_noise_reaction
 
 
 def run_single_sim(recipe: ReactionRecipe,
@@ -46,7 +49,7 @@ def run_single_sim(recipe: ReactionRecipe,
 
         print("================= SETTING UP SIMULATION =================")
 
-        initial_simulation = setup_reaction(
+        initial_simulation = setup_noise_reaction(
             reaction_lib.phases,
             precursor_mole_ratios = recipe.reactant_amounts,
             size = recipe.simulation_size,
@@ -54,11 +57,23 @@ def run_single_sim(recipe: ReactionRecipe,
 
     print(f'================= RUNNING SIMULATION =================')
 
-    runner = MeltAndRegrindMultiRunner()
+
+    rxn_calculator = ReactionCalculator(
+        LiquidSwapController.get_neighborhood_from_structure(initial_simulation.structure),
+    )
+
+    controller = LiquidSwapController(
+        initial_simulation.structure,
+        rxn_calculator=rxn_calculator
+    )
+
+    runner = HeatingScheduleRunner()
+
     result = runner.run_multi(
         initial_simulation,
         reaction_lib,
-        recipe.heating_schedule
+        recipe.heating_schedule,
+        controller=controller
     )
 
     result_doc = RxnCAResultDoc(

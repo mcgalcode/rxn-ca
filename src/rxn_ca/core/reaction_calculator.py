@@ -47,7 +47,7 @@ class ReactionCalculator():
     def __init__(self,
         neighborhood_graph,
         scored_rxns: ScoredReactionSet = None,
-        inertia = 1,
+        inertia = 1.75,
         open_species = {},
     ) -> None:
         self.rxn_set = scored_rxns
@@ -140,6 +140,11 @@ class ReactionCalculator():
             
             possible_interactions.append(interaction)
 
+
+        possible_interactions.append(SiteInteraction(
+            is_no_op=True,
+            score=self.inertia
+        ))
         # Add interactions with atmosphere
         possible_interactions = [*possible_interactions, *self.interactions_with_open_species(site_one_state)]
 

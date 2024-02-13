@@ -1,5 +1,6 @@
 from ..phases.solid_phase_set import SolidPhaseSet
 from ..setup import ReactionPreparer
+from ..setup.noise_setup import SetupRandomNoise
 
 from pylattica.core import Simulation
 from typing import Dict
@@ -19,3 +20,10 @@ def setup_reaction(
     )
     
     return sim
+
+def setup_noise_reaction(
+        phases: SolidPhaseSet,
+        precursor_mole_ratios: Dict,
+        size: int = 15
+    ):
+    return SetupRandomNoise(phases).setup(precursor_mole_ratios, size)
