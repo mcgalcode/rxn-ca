@@ -39,7 +39,10 @@ class BasicScore(ABC):
     def score(self, rxn: ComputedReaction):
         pass
 
-    
+class VirScorer(BasicScore):
+
+    def score(self, rxn: ComputedReaction):
+        return 0
 class TammanHuttigScoreExponential(BasicScore):
     # https://en.wikipedia.org/wiki/Tammann_and_H%C3%BCttig_temperatures
 
