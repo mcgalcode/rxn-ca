@@ -33,6 +33,7 @@ setup(
         'plotly >= 5.6.0',
         'monty',
         'pydantic',
+        'mp-api'
     ],
     extras_require={
         "docs": [
