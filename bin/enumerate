@@ -30,7 +30,7 @@ if manifest_filename is not None:
     energy_cutoff = manifest.get("energy_cutoff", 0.01)
 else:
     chem_sys = args.chemical_system
-    energy_cutoff = args.energy_cutoff if args.energy_cutoff is not None else 0.01
+    energy_cutoff = float(args.energy_cutoff) if args.energy_cutoff is not None else 0.01
     formulas_to_include = args.formulas_to_include
     if formulas_to_include is None:
         formulas_to_include = []
