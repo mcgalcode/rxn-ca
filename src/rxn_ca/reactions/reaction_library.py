@@ -58,6 +58,12 @@ class ReactionLibrary(MSONable):
     def get_rxns_at_temp(self, temp: int) -> ScoredReactionSet:
         return self.lib[temp]
     
+    def limit_phase_set(self, phases) -> ReactionLibrary:
+        lib = ReactionLibrary(self.phases)
+        for t, rxns in self.lib.items():
+            lib.add_rxns_at_temp(rxns.limit_phases(phases), t)
+        return lib
+    
     @property
     def temps(self):
         return list(self.lib.keys())

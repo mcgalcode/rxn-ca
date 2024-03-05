@@ -1,4 +1,7 @@
 from rxn_ca.utilities.enumerate_rxns import enumerate_rxns
+from rxn_ca.utilities.get_entries import get_entries
+from rxn_ca.phases import SolidPhaseSet
+from rxn_network.entries.entry_set import GibbsEntrySet
 
 import argparse
 
@@ -14,6 +17,7 @@ parser.add_argument('-m', '--reaction-manifest')
 parser.add_argument('-s', '--chemical-system')
 parser.add_argument('-e', '--energy-cutoff')
 parser.add_argument('-f', '--formulas-to-include')
+parser.add_argument('-t', '--extra-entry-set-file')
 
 parser.add_argument('-o', '--output-file')
 
@@ -41,6 +45,22 @@ if chem_sys is None:
     print("chemical system most be provided! either by the -s flag, or as the chemical_system value in the reaction manifest")
 
 print(f"Enumerating rxns for {chem_sys} using energy cutoff {energy_cutoff} and ensuring formulas {formulas_to_include} are present")          
+
+if args.extra_entry_set_file is not None:
+    with open(args.extra_entry_set_file, "r+") as f:
+        eset_dict = json.load(f)
+        extra_entry_set = GibbsEntrySet.from_dict(eset_dict['entry_set'])
+        entry_metadata = eset_dict['entry_metadata']
+
+entries = get_entries(
+    chem_sys,
+    stability_cutoff=energy_cutoff,
+    formulas_to_include=formulas_to_include,
+    custom_entries=extra_entry_set.entries_list
+)
+
+phase_set = SolidPhaseSet.from_entry_set(entries, entry_metadata=entry_metadata)
+
 result = enumerate_rxns(chem_sys=chem_sys,
                         stability_cutoff=energy_cutoff,
                         formulas_to_include=formulas_to_include)

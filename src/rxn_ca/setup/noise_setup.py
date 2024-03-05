@@ -7,6 +7,8 @@ from pylattica.core import Simulation
 from ..core.constants import VOLUME, MELTED_AMTS, VOL_MULTIPLIER, GASES_CONSUMED, GASES_EVOLVED
 from ..phases import SolidPhaseSet
 from random import shuffle
+
+import copy
 class SetupRandomNoise():
 
     def __init__(self, phases: SolidPhaseSet, dim: int = 3):
@@ -16,8 +18,9 @@ class SetupRandomNoise():
     def setup(self,
             phase_mol_ratios: Dict[str, float],
             size: int = 15,
+            packing_efficiency = 0.97
     ):
-        total_vol = size ** self.dim
+        total_vol = size ** self.dim * packing_efficiency
         volume_ratios = self.phase_set.mole_amts_to_vols(phase_mol_ratios)
         
         total_vol_ratio = sum(volume_ratios.values())
@@ -31,9 +34,17 @@ class SetupRandomNoise():
         cell_occs = [k for k, v in desired_phase_vols.items() for _ in range(v)]
         shuffle(cell_occs)
 
+        site_ids = struct.site_ids
+        shuffle(site_ids)
+
         for i, occ in enumerate(cell_occs):
-            state.set_site_state(i, {
+            state.set_site_state(site_ids[i], {
                 DISCRETE_OCCUPANCY: occ,
+                VOLUME: 1.0
+            })
+
+        for sid in site_ids:
+            state.set_site_state(sid, {
                 VOLUME: 1.0
             })
 

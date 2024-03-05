@@ -42,8 +42,11 @@ def run_single_sim(recipe: ReactionRecipe,
     print()
     print()
 
-    if recipe.exclude_phases:
+    if len(recipe.exclude_phases) > 0:
         reaction_lib = reaction_lib.exclude_phases(recipe.exclude_phases)
+
+    if recipe.exact_phase_set is not None:
+        reaction_lib = reaction_lib.limit_phase_set(recipe.exact_phase_set)
 
     if initial_simulation is None:
 

@@ -10,7 +10,8 @@ from tqdm import tqdm
 from typing import List
 
 def get_scored_rxns(rxn_set: ReactionSet,
-                    heating_sched: HeatingSchedule,
+                    heating_sched: HeatingSchedule = None,
+                    temps: List = None,
                     scorer_class: BasicScore = TammanHuttigScoreErf,
                     exclude_pure_elements: bool = False,
                     exclude_theoretical: bool = True,
@@ -18,9 +19,10 @@ def get_scored_rxns(rxn_set: ReactionSet,
                     phase_set: SolidPhaseSet = None):
 
     lib = ReactionLibrary(phases=phase_set)
-    sched_temps = heating_sched.all_temps
+    if heating_sched is not None:
+        temps = heating_sched.all_temps
     
-    for t in tqdm(sched_temps, desc="Getting reaction energies at temperatures..."):
+    for t in tqdm(temps, desc="Getting reaction energies at temperatures..."):
         scorer = scorer_class(temp=t, phase_set=phase_set)
         rset = rxn_set.set_new_temperature(t)
 

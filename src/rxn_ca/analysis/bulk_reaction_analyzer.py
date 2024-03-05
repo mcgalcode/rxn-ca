@@ -26,7 +26,11 @@ class BulkReactionAnalyzer():
     def from_result_doc_file(cls, fname: str) -> BulkReactionAnalyzer:
         doc: RxnCAResultDoc = RxnCAResultDoc.from_file(fname)
         return cls(doc.results, doc.reaction_library.phases, doc.recipe.heating_schedule)
-
+    
+    @classmethod
+    def from_result_doc(cls, doc: RxnCAResultDoc) -> BulkReactionAnalyzer:
+        return cls(doc.results, doc.reaction_library.phases, doc.recipe.heating_schedule)
+    
     def __init__(self, results: List[ReactionResult], phase_set: SolidPhaseSet, heating_sched: HeatingSchedule):
         """Initializes a ReactionResult with the reaction set used in the simulation
 
@@ -64,7 +68,6 @@ class BulkReactionAnalyzer():
             fig.add_trace(t)
 
         fig.show()
-
     
     def plot_elemental_fractions(self) -> None:
         elements = list(self.step_analyzer.get_fractional_elemental_composition(self.results[0].first_step).keys())
@@ -232,6 +235,14 @@ class BulkReactionAnalyzer():
     def get_first_steps(self):
         return [r.first_step for r in self.results]
 
+    def all_phases_present(self):
+        step_idxs, step_groups = self._get_step_groups()
+        sgs = [self.step_analyzer.phases_present(sg) for sg in step_groups]
+        all_phases = set()
+        for sg in sgs:
+            all_phases.update(sg)
+        return list(all_phases)
+
     def get_molar_phase_traces(self, min_prevalence=0.01, xrd_adjust=True, phases=None, legend="legend1") -> None:
         """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
 
@@ -376,6 +387,41 @@ class BulkReactionAnalyzer():
         for phase in phases:
             if phase != SolidPhaseSet.FREE_SPACE:
                 ys = [mb.get(phase, 0) for mb in vol_breakdowns]
+                traces.append((step_idxs, ys, phase))
+
+        filtered_traces = [t for t in traces if max(t[1]) > 0.1]
+
+        for t in filtered_traces:
+            fig.add_trace(self._get_trace(t[2], t[0], t[1]))
+
+        fig.show()     
+
+    def plot_phase_masses(self):
+        """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
+
+        Returns:
+            None:
+        """
+
+        step_idxs, step_groups = self._get_step_groups()
+
+        fig = self._get_plotly_fig(
+            "Simulation Step",
+            "Mass",
+            "Phase Mass by Simulation Step",
+            step_idxs[-1]
+        )
+        
+        traces = []
+        mass_breakdowns = [self.step_analyzer.get_absolute_phase_masses(step_group) for step_group in step_groups]
+
+        phases = set()
+        for bd in mass_breakdowns:
+            phases = phases.union(set(bd.keys()))
+            
+        for phase in phases:
+            if phase != SolidPhaseSet.FREE_SPACE:
+                ys = [mb.get(phase, 0) for mb in mass_breakdowns]
                 traces.append((step_idxs, ys, phase))
 
         filtered_traces = [t for t in traces if max(t[1]) > 0.1]

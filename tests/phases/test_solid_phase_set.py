@@ -96,3 +96,9 @@ def test_vol_to_el_conversions(basic_phase_set: SolidPhaseSet):
     assert np.isclose(els.get("Cl"), 2)
     assert np.isclose(els.get("Li"), 12)
     assert np.isclose(els.get("O"), 6)
+
+def test_make_phase_set_from_mp():
+    phases = [NA_CL, LI2_O]
+    pset = SolidPhaseSet.from_phase_list(phases)
+    # +1 for the FREE_SPACE phase
+    assert len(pset) == len(phases) + 1

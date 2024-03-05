@@ -1,6 +1,8 @@
-from typing import List
+from typing import List, Dict
 
 import json
+
+from monty.json import MontyDecoder, MontyEncoder, MSONable
 
 from .scored_reaction import ScoredReaction
 from ..phases.solid_phase_set import SolidPhaseSet
@@ -19,13 +21,13 @@ class ScoredReactionSet():
     @classmethod
     def from_file(cls, fpath):
         with open(fpath, 'r+') as f:
-            return cls.from_dict(json.loads(f.read()))
+            return cls.from_dict(json.load(f,))
 
     @classmethod
-    def from_dict(cls, rxn_set_dict):
+    def from_dict(cls, rxn_set_dict: Dict):
         return cls(
             [ScoredReaction.from_dict(r) for r in rxn_set_dict["reactions"]],
-            rxn_set_dict.get("phases")
+            SolidPhaseSet.from_dict(rxn_set_dict["phase_set"])
         )
 
     IDENTITY = "IDENTITY"
@@ -116,6 +118,14 @@ class ScoredReactionSet():
                 filtered.add_rxn(r)
         
         return filtered
+    
+    def limit_phases(self, phase_list: List[str]):
+        comps = [Composition(p) for p in phase_list]
+        filtered_rxn_set = ScoredReactionSet([], self.phases)
+        for r in self.reactions:
+            if all([Composition(p) in comps for p in r.all_phases]):
+                filtered_rxn_set.add_rxn(r)
+        return filtered_rxn_set
 
     def get_reactions(self, reactants: list[str]) -> List[ScoredReaction]:
         """Given a list of reactants, returns the list of reactions which
@@ -188,3 +198,6 @@ class ScoredReactionSet():
             "@module": self.__class__.__module__,
             "@class": self.__class__.__name__,
         }
+    
+    def __len__(self):
+        return len(self.rxn_map)

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from rxn_ca.computing.schemas.enumerated_rxns_schema import EnumeratedRxnsModel
 from rxn_ca.core.recipe import ReactionRecipe
 from rxn_ca.reactions import ReactionLibrary
 
@@ -52,17 +51,12 @@ print(f"Choosing {output_file} as output location")
 
 recipe = ReactionRecipe.from_file(recipe_filename)
 
-if reactions_filename is not None:
-    rxns: EnumeratedRxnsModel = EnumeratedRxnsModel.from_file(reactions_filename)
-    reaction_set = rxns.rxn_set
-    phases = None
-    rxn_lib = None
-elif reaction_library_filename is not None:
+if reaction_library_filename is not None:
     rxn_lib = ReactionLibrary.from_file(reaction_library_filename)
     reaction_set = None
     phases = rxn_lib.phases
 else:
-    print("Either --reactions-file or --reaction-library-file is required to use the react script")
+    print("--reaction-library-file is required to use the react script")
     sys.exit()
 
 if initial_simulation_filename is not None:
