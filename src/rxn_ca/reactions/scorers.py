@@ -27,7 +27,13 @@ def huttig_score_softplus(t_tm_ratio):
     return math.log(1 + math.exp(8 * (t_tm_ratio - 0.33)))
 
 def erf(x):
-    return 0.5 * (1 + math.erf(-35 * (x + 0.05)))
+    return 0.5 * (1 + math.erf(-35 * (x + 0.03)))
+
+def tamman_erf_score(tm_ratio, delta_g):
+    return tamman_score_softplus(tm_ratio) * erf(delta_g)
+
+def huttig_erf_score(tm_ratio, delta_g):
+    return huttig_score_softplus(tm_ratio) * erf(delta_g)
          
 class BasicScore(ABC):
 
@@ -39,10 +45,6 @@ class BasicScore(ABC):
     def score(self, rxn: ComputedReaction):
         pass
 
-class VirScorer(BasicScore):
-
-    def score(self, rxn: ComputedReaction):
-        return 0
 class TammanHuttigScoreExponential(BasicScore):
     # https://en.wikipedia.org/wiki/Tammann_and_H%C3%BCttig_temperatures
 
@@ -112,7 +114,7 @@ class TammanHuttigScoreErf(BasicScore):
 def score_rxns(reactions: ReactionSet, scorer: BasicScore, phase_set: SolidPhaseSet = None):
     scored_reactions = []
 
-    for rxn in tqdm(reactions.get_rxns(), desc="Scoring reactions..."):
+    for rxn in tqdm(reactions.get_rxns(), desc=f"Scoring reactions... at temp {scorer.temp}"):
         reactants = [r.reduced_formula for r in rxn.reactants]
         non_gases = [r for r in reactants if r not in phase_set.gas_phases]
         if len(non_gases) > 0:

@@ -60,14 +60,19 @@ def run_single_sim(recipe: ReactionRecipe,
 
     print(f'================= RUNNING SIMULATION =================')
 
+    atmosphere = {}
+    if recipe.atmospheric_phases is not None:
+        for p in recipe.atmospheric_phases:
+            atmosphere[p] = 1
 
     rxn_calculator = ReactionCalculator(
         LiquidSwapController.get_neighborhood_from_structure(initial_simulation.structure),
+        open_species=atmosphere
     )
 
     controller = LiquidSwapController(
         initial_simulation.structure,
-        rxn_calculator=rxn_calculator
+        rxn_calculator=rxn_calculator,
     )
 
     runner = HeatingScheduleRunner()

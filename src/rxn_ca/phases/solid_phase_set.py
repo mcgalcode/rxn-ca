@@ -24,6 +24,15 @@ from ..utilities.helpers import normalize_dict, add_values_to_dict_by_addition
 
 from pymatgen.core.composition import Composition
 
+def process_composition(comp_str):
+    return Composition(comp_str).reduced_formula
+
+def process_composition_list(comp_list):
+    return [process_composition(c) for c in comp_list]
+
+def process_composition_dict(comp_dict):
+    return { process_composition(c): v for c, v in comp_dict.items() }
+
 class SolidPhaseSet(PhaseSet):
 
     FREE_SPACE = "Free Space"
@@ -47,7 +56,7 @@ class SolidPhaseSet(PhaseSet):
         """Constructs a SolidPhaseSet from an EntrySet object. Expects the entry
         set itself and allows direct specification of the metadata for those entries
         along side it (metadata being whether or not that entry is experimentally observed,
-        and its melting point)
+        its melting point, its volume, and its density)
 
         Parameters
         ----------
@@ -95,12 +104,12 @@ class SolidPhaseSet(PhaseSet):
                        densities: Dict[str, float] = None,
                        melting_points: Dict[str, float] = None,
                        experimentally_observed: Dict[str, bool] = None):
-        phases = list(set(phases + [SolidPhaseSet.FREE_SPACE]))
-        self.gas_phases: List[str] = gas_phases
-        self.volumes: Dict[str, float] = volumes
-        self.melting_points: Dict[str, float] = melting_points
-        self.experimentally_observed: Dict[str, bool] = experimentally_observed
-        self.densities: Dict[str, float] = densities
+        phases = process_composition_list(list(set(phases)))
+        self.gas_phases: List[str] = process_composition_list(gas_phases)
+        self.volumes: Dict[str, float] = process_composition_dict(volumes)
+        self.melting_points: Dict[str, float] = process_composition_dict(melting_points)
+        self.experimentally_observed: Dict[str, bool] = process_composition_dict(experimentally_observed)
+        self.densities: Dict[str, float] = process_composition_dict(densities)
         super().__init__(phases)
 
     def get_vol(self, phase: str) -> float:
@@ -112,7 +121,7 @@ class SolidPhaseSet(PhaseSet):
         Returns:
             float: The molar volume
         """
-        return self.volumes.get(phase)
+        return self.volumes.get(process_composition(phase))
     
     def get_melting_point(self, phase: str) -> float:
         """Returns the machine learning estimated melting point of the supplied phase.
@@ -123,7 +132,7 @@ class SolidPhaseSet(PhaseSet):
         Returns:
             float: The melting point
         """
-        return self.melting_points.get(phase)
+        return self.melting_points.get(process_composition(phase))
     
     def get_density(self, phase: str) -> float:
         """Returns the density of the supplied phase.
@@ -134,7 +143,7 @@ class SolidPhaseSet(PhaseSet):
         Returns:
             float: The density
         """
-        return self.densities.get(phase)
+        return self.densities.get(process_composition(phase))
     
     def is_theoretical(self, phase: str) -> bool:
         """Indicates whether or not the phase is marked as theoretical in MP
@@ -145,7 +154,7 @@ class SolidPhaseSet(PhaseSet):
         Returns:
             bool:
         """
-        return not self.experimentally_observed[phase]
+        return not self.experimentally_observed.get(process_composition(phase), False)
     
     def is_gas(self, phase: str) -> bool:
         """Indicates whether or not the supplied phase is a gas
@@ -156,7 +165,7 @@ class SolidPhaseSet(PhaseSet):
         Returns:
             bool: Whether or not it is a gas
         """
-        return phase in self.gas_phases
+        return process_composition(phase) in self.gas_phases
 
     def get_melted_phases(self, temp: int) -> List[str]:
         """Return the subset of phases which are melted at the supplied temp
@@ -179,7 +188,7 @@ class SolidPhaseSet(PhaseSet):
         Returns:
             bool: Is it melted?
         """
-        return temp > self.get_melting_point(phase)
+        return temp > self.get_melting_point(process_composition(phase))
     
     def is_non_gaseous_el(self, phase: str) -> bool:
         c = Composition(phase)
@@ -197,7 +206,7 @@ class SolidPhaseSet(PhaseSet):
         Returns:
             List[str]:
         """
-        return [phase for phase in self.phases if phase != SolidPhaseSet.FREE_SPACE and self.is_theoretical(phase)]
+        return [phase for phase in self.phases if self.is_theoretical(phase)]
     
     def get_experimentally_observed_phases(self) -> List[str]:
         """Returns the phases inside this SolidPhaseSet that are marked
@@ -206,7 +215,7 @@ class SolidPhaseSet(PhaseSet):
         Returns:
             List[str]:
         """
-        return [phase for phase in self.phases if phase != SolidPhaseSet.FREE_SPACE and not self.is_theoretical(phase)]
+        return [phase for phase in self.phases if not self.is_theoretical(phase)]
     
     def mole_amts_to_vols(self, mol_amts: Dict[str, float]) -> Dict[str, float]:
         """Converts amounts expressed in moles to their equivalent volumes

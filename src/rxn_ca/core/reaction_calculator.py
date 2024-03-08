@@ -140,13 +140,14 @@ class ReactionCalculator():
             
             possible_interactions.append(interaction)
 
-
         possible_interactions.append(SiteInteraction(
             is_no_op=True,
             score=self.inertia
         ))
         # Add interactions with atmosphere
-        possible_interactions = [*possible_interactions, *self.interactions_with_open_species(site_one_state)]
+        open_specie_interactions = self.interactions_with_open_species(site_one_state)
+        # print(open_specie_interactions)
+        possible_interactions = [*possible_interactions, *open_specie_interactions]
 
         return possible_interactions
 

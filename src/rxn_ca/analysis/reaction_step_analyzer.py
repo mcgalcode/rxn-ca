@@ -61,6 +61,13 @@ class ReactionStepAnalyzer():
         for p, v in vols.items():
             masses[p] = v * self.phase_set.get_density(p)
         return masses
+    
+    def get_all_mass_fractions(self,
+                               step_group: Union[List[SimulationState], SimulationState],
+                               include_melted = True,
+                               include_evolved_gases: bool = False):
+        phase_masses = self.get_absolute_phase_masses(step_group, include_melted=include_melted, include_evolved_gases=include_evolved_gases)
+        return normalize_dict(phase_masses)    
 
     def phases_present(self,
                        step_group: Union[List[SimulationState], SimulationState],

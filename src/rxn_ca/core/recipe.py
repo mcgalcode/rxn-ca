@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from .heating import HeatingSchedule
 from typing import Dict, List
 from ..utilities.helpers import format_chem_sys
-from ..reactions.scorers import TammanHuttigScoreErf, TammanHuttigScoreExponential, TammanHuttigScoreSoftplus, VirScorer
+from ..reactions.scorers import TammanHuttigScoreErf, TammanHuttigScoreExponential, TammanHuttigScoreSoftplus
 import json
 
 from enum import Enum
@@ -20,7 +20,6 @@ _SCORE_TYPE_MAP = {
     ScoreTypes.TAMMAN_HUTTIG_EXP_GIBBS_SOFTPLUS: TammanHuttigScoreExponential,
     ScoreTypes.TAMMAN_HUTTIG_SOFTPLUS_GIBBS_ERF: TammanHuttigScoreErf,
     ScoreTypes.TAMMAN_HUTTIG_SOFTPLUS_GIBBS_SOFTPLUS: TammanHuttigScoreSoftplus,
-    ScoreTypes.VIR_SCORER: VirScorer
 }
 
 
@@ -38,6 +37,7 @@ class ReactionRecipe(MSONable):
     score_type: str = ScoreTypes.TAMMAN_HUTTIG_SOFTPLUS_GIBBS_ERF
     additional_gas_phases: List[str] = field(default_factory=list)
     exact_phase_set: List[str] = None
+    atmospheric_phases: List[str] = None
     
     def __post_init__(self):
         self.chem_sys = format_chem_sys(self.chem_sys)

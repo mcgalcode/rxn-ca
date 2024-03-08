@@ -15,6 +15,9 @@ from typing import Tuple, List
 from pymatgen.core.composition import Composition
 import numpy as np
 
+def color(color, text):
+    return f"<span style='color:{str(color)}'> {str(text)} </span>"
+
 OTHERS = "others"
 class BulkReactionAnalyzer():
     """A class that stores the result of running a simulation. Keeps track of all
@@ -42,11 +45,14 @@ class BulkReactionAnalyzer():
 
         self.result_length = len(results[0])
         self.results = results
+        self._results_loaded = False
+        self._step_idxs = None
+        self._step_groups = None
 
     def _get_trace(self, name, xs, ys, legend="legend1"):
         return go.Scatter(name=name, x=xs, y=ys, mode='lines', line=dict(width=4), legend=legend)
 
-    def plot_elemental_amounts(self) -> None:
+    def plot_elemental_amounts(self, **layout_kwargs) -> None:
         elements = list(self.step_analyzer.get_molar_elemental_composition(self.results[0].first_step).keys())
         traces = []
         
@@ -58,10 +64,10 @@ class BulkReactionAnalyzer():
 
         max_x = max(set().union([t.x for t in traces]))
         fig = self._get_plotly_fig(
-            "Simulation Step",
             "Moles of Element",
             "Molar Elemental Amts. vs time step",
-            max_x
+            max_x,
+            **layout_kwargs
         )
 
         for t in traces:
@@ -69,7 +75,7 @@ class BulkReactionAnalyzer():
 
         fig.show()
     
-    def plot_elemental_fractions(self) -> None:
+    def plot_elemental_fractions(self, **layout_kwargs) -> None:
         elements = list(self.step_analyzer.get_fractional_elemental_composition(self.results[0].first_step).keys())
         traces = []
         
@@ -81,10 +87,10 @@ class BulkReactionAnalyzer():
 
         max_x = max(set().union([t.x for t in traces]))
         fig = self._get_plotly_fig(
-            "Simulation Step",
             "El. Fraction",
             "Elemental Fractions vs time step",
-            max_x
+            max_x,
+            **layout_kwargs
         )
 
         for t in traces:
@@ -92,26 +98,24 @@ class BulkReactionAnalyzer():
 
         fig.show()
 
-    def get_layout(self, x_label, y_label, title, max_x):
+    def get_layout(self, x_label, y_label, title, max_x, max_y=None):
         return go.Layout(
             title={
                 'text' : title,
-                'x':0.43,
+                'x': 0.42,
                 'y': 0.92,
-                'xanchor': 'center'
             },
             paper_bgcolor='rgba(0,0,0,0)', 
             plot_bgcolor='rgba(0,0,0,0)',
-            width=1000, height=800,
+            width=900, height=800,
             xaxis=XAxis(
-                title=x_label,
                 range=[0, max_x],
-                gridcolor='black',
+                ticks='',
                 mirror=True,
-                ticks='outside',
+                showticklabels=False,
                 showline=True,
                 linecolor='black',
-            ),
+            ),        
             yaxis2 = YAxis(
                 title=dict(
                     text="Temp (K)",
@@ -133,16 +137,16 @@ class BulkReactionAnalyzer():
                 title=dict(
                     text=y_label,
                 ),
-                gridcolor='black',
-                range=(0, None),
+                showgrid=False,
+                range=(0, max_y),
                 side='left',
-                ticks='outside',
+                showticklabels=False,
+                ticks='',
                 showline=True,    
-                linecolor='black',    
+                linecolor='black',
+                mirror=True   
             ),
             legend=dict(
-                x=1.2,
-                y=0.6,
                 borderwidth=2
             ),
             font=dict(
@@ -151,17 +155,98 @@ class BulkReactionAnalyzer():
             )            
         )
 
-    def _get_plotly_fig(self, x_label, y_label, title, max_x):
-        layout = self.get_layout(x_label, y_label, title, max_x)
+    def _get_plotly_fig(self,
+                        y_label,
+                        title,
+                        max_x,
+                        include_heating_trace=True,
+                        use_heating_xaxis=False,
+                        show_y_ticks_and_grids=False,
+                        max_y=None):
+        if use_heating_xaxis:
+            x_label = "Temperature (K)"
+        else:
+            x_label = "Reaction Coordinate (arb. units)"
+        layout = self.get_layout(x_label, y_label, title, max_x, max_y=max_y)
 
-        fig = go.Figure(layout=layout)        
+        fig = go.Figure(layout=layout)
 
-        fig.add_trace(self.get_heating_trace())
+        if show_y_ticks_and_grids:
+            fig.update_layout(
+                yaxis=dict(
+                    title=dict(
+                        text=y_label,
+                    ),
+                    ticks='outside',
+                    gridcolor='black',
+                    showgrid=True,
+                    showticklabels=True,
+                    range=(0, None),
+                    side='left',
+                    showline=True,    
+                    linecolor='black',
+                ),
+            )
+
+        if include_heating_trace:
+            fig.add_trace(self.get_heating_trace())
+            fig.update_layout(
+                width=1000,
+                legend=dict(
+                    x=1.2,
+                    y=0.6,
+                    borderwidth=2
+                ),
+            )
+
+        if use_heating_xaxis:
+            step_size = len(self.results[0].first_step.all_site_states()) / 100
+            xs = []
+            xlabels = []
+            curr_x = 0
+            last_temp = None
+            for step in self.heating_schedule.steps:
+                if step.temp != last_temp:
+                    xs.append(curr_x)
+                    xlabels.append(step.temp)
+                    last_temp = step.temp
+                curr_x = curr_x + step.duration * step_size
+
+
+            fig.update_layout(
+                xaxis = dict(
+                    tickmode = 'array',
+                    tickvals = xs,
+                    ticktext = xlabels,
+                    showticklabels = True,
+                    showline = True,
+                    showgrid=False,
+                    title=x_label
+                )
+            )
+        else:
+            fig.add_annotation(
+                dict(
+                    font=dict(
+                        color="black",
+                        family="Lato",
+                        size=22
+                    ),
+                    showarrow=False,
+                    x=0.49,
+                    y=-0.08,
+                    text=x_label,
+                    textangle=0,
+                    xref="paper",
+                    yref="paper"
+                )
+            )
         
         return fig
     
     def get_heating_trace(self):
-        step_size = len(self.results[0].first_step.all_site_states())
+        # NOTE: This 100 is hardcoded to match the `record_every` parameter in the async runner in pylattica
+        step_size = len(self.results[0].first_step.all_site_states()) / 100
         heating_xs, heating_ys = self.heating_schedule.get_xy_for_plot(step_size=step_size)
         return go.Scatter(
             name="Temperature",
@@ -200,11 +285,17 @@ class BulkReactionAnalyzer():
     
     def molar_fractional_breakdown(self, step_no, include_melted: bool = True):
         return self.step_analyzer.get_all_absolute_molar_amounts(self.get_steps(step_no), include_melted=include_melted)
+    
+    def get_final_molar_breakdown(self):
+        _, steps = self._get_step_groups()
+        return self.step_analyzer.get_all_mole_fractions(steps[-1])
 
     def get_all_absolute_molar_amounts(self, step_no: int, include_melted: bool = True):
         return self.step_analyzer.get_all_absolute_molar_amounts(self.get_steps(step_no), include_melted=include_melted)
 
-    def plot_mole_fractions(self, min_prevalence=0.01) -> None:
+    def plot_mole_fractions(self,
+                            min_prevalence=0.01,
+                            **layout_kwargs) -> None:
         """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
 
         Returns:
@@ -215,10 +306,11 @@ class BulkReactionAnalyzer():
         max_x = max(set().union([t.x for t in traces]))
 
         fig = self._get_plotly_fig(
-            "Simulation Step",
-            "Prevalence",
-            "Prevalence by Simulation Step",
-            max_x
+            "Mole Fraction",
+            "Molar Phase Fractions",
+            max_x,
+            show_y_ticks_and_grids=True,
+            **layout_kwargs
         )
 
         for t in traces:
@@ -274,7 +366,11 @@ class BulkReactionAnalyzer():
         return traces
     
 
-    def plot_molar_phase_amounts(self, min_prevalence=0.01, xrd_adjust=False, phases=None) -> None:
+    def plot_molar_phase_amounts(self,
+                                 min_prevalence=0.01,
+                                 xrd_adjust=False,
+                                 phases=None,
+                                 **layout_kwargs) -> None:
         """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
 
         Returns:
@@ -288,10 +384,10 @@ class BulkReactionAnalyzer():
             ylabel = "# of Moles"
 
         fig = self._get_plotly_fig(
-            "Simulation Step",
             ylabel,
             "Absolute Molar Prevalence by Simulation Step",
-            None
+            None,
+            **layout_kwargs
         )
 
         for t in traces:
@@ -311,11 +407,51 @@ class BulkReactionAnalyzer():
 
         return ys
     
-    def plot_groups(self, group_defs):
+    def generate_rip_plots(self,
+                           reactants,
+                           products,
+                           **layout_kwargs):
+        all_phases = self.all_phases_present()
+        impurities = set(all_phases) - set(reactants) - set(products)
+        groups = {
+            "Precursor": reactants,
+            "Impurities": impurities,
+            "Products": products
+        }
+
+        details = {
+            "Precursor": {
+                "fillcolor": "rgb(227, 228, 229)",
+                "line": {
+                    "color": "white",
+                    "width": 4
+                }
+            },
+            "Impurities": {
+                "fillcolor": "rgb(248,227,237)",
+                "line": {
+                    "color": "white",
+                    "width": 4
+                }
+            },
+            "Products": {
+                "fillcolor": "rgb(201, 225, 215)",
+                "line": {
+                    "color": "white",
+                    "width": 4
+                }
+            }
+        }
+        self.plot_groups(groups, group_details=details, **layout_kwargs)
+    
+    def plot_groups(self,
+                    group_defs,
+                    group_details = {},
+                    **layout_kwargs):
         step_idxs, step_groups = self._get_step_groups()
 
         traces = []
-        molar_breakdowns = [self.step_analyzer.get_all_mole_fractions(sg) for sg in step_groups]
+        molar_breakdowns = [self.step_analyzer.get_all_mass_fractions(sg) for sg in step_groups]
 
 
         phases = set()
@@ -342,26 +478,30 @@ class BulkReactionAnalyzer():
                 x=step_idxs,
                 y=trace_data,
                 mode='lines',
-                line=dict(width=4),
-                stackgroup='one'
+                stackgroup='one',
+                **group_details.get(trace_name, {})
             )
 
             go_traces.append(tr)
 
         fig = self._get_plotly_fig(
-            "Simulation Step",
-            "# of Moles",
-            "Absolute Molar Prevalence by Simulation Step",
-            None
+            "Mass Fraction",
+            "Mass Fraction Prevalence by Simulation Step",
+            None,
+            max_y=1.0,
+            **layout_kwargs
         )
 
         fig.add_traces(go_traces)
+        for t in self.get_mass_fraction_traces():
+            fig.add_trace(self._get_trace(t[2], t[0], t[1]))
+            
 
         fig.show()
         
         
 
-    def plot_phase_volumes(self):
+    def plot_phase_volumes(self, **layout_kwargs):
         """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
 
         Returns:
@@ -371,10 +511,10 @@ class BulkReactionAnalyzer():
         step_idxs, step_groups = self._get_step_groups()
 
         fig = self._get_plotly_fig(
-            "Simulation Step",
-            "Volume",
+            "Volume (arb. units)",
             "Phase Volume by Simulation Step",
-            step_idxs[-1]
+            step_idxs[-1],
+            **layout_kwargs
         )
         
         traces = []
@@ -394,23 +534,10 @@ class BulkReactionAnalyzer():
         for t in filtered_traces:
             fig.add_trace(self._get_trace(t[2], t[0], t[1]))
 
-        fig.show()     
+        fig.show()
 
-    def plot_phase_masses(self):
-        """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
-
-        Returns:
-            None:
-        """
-
+    def get_mass_traces(self):
         step_idxs, step_groups = self._get_step_groups()
-
-        fig = self._get_plotly_fig(
-            "Simulation Step",
-            "Mass",
-            "Phase Mass by Simulation Step",
-            step_idxs[-1]
-        )
         
         traces = []
         mass_breakdowns = [self.step_analyzer.get_absolute_phase_masses(step_group) for step_group in step_groups]
@@ -426,7 +553,65 @@ class BulkReactionAnalyzer():
 
         filtered_traces = [t for t in traces if max(t[1]) > 0.1]
 
-        for t in filtered_traces:
+        return filtered_traces
+    
+    def plot_phase_masses(self, **layout_kwargs):
+        """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
+
+        Returns:
+            None:
+        """
+
+        step_idxs, _ = self._get_step_groups()
+
+        fig = self._get_plotly_fig(
+            "Mass (arb. units)",
+            "Phase Mass by Simulation Step",
+            step_idxs[-1],
+            **layout_kwargs
+        )
+
+        for t in self.get_mass_traces():
+            fig.add_trace(self._get_trace(t[2], t[0], t[1]))
+
+        fig.show()
+
+    def get_mass_fraction_traces(self):
+        step_idxs, step_groups = self._get_step_groups()
+
+        traces = []
+        mass_breakdowns = [self.step_analyzer.get_all_mass_fractions(step_group) for step_group in step_groups]
+
+        phases = set()
+        for bd in mass_breakdowns:
+            phases = phases.union(set(bd.keys()))
+            
+        for phase in phases:
+            if phase != SolidPhaseSet.FREE_SPACE:
+                ys = [mb.get(phase, 0) for mb in mass_breakdowns]
+                traces.append((step_idxs, ys, phase))
+
+        filtered_traces = [t for t in traces if max(t[1]) > 0.01] 
+        return filtered_traces      
+
+    def plot_mass_fractions(self, **layout_kwargs):
+        """In a Jupyter Notebook environment, plots the phase prevalence traces for the simulation.
+
+        Returns:
+            None:
+        """
+
+        step_idxs, _ = self._get_step_groups()
+
+        fig = self._get_plotly_fig(
+            "Mass Fraction",
+            "Phase Mass Fraction by Simulation Step",
+            step_idxs[-1],
+            show_y_ticks_and_grids=True,
+            **layout_kwargs
+        )
+
+        for t in self.get_mass_fraction_traces():
             fig.add_trace(self._get_trace(t[2], t[0], t[1]))
 
         fig.show()        
@@ -441,8 +626,14 @@ class BulkReactionAnalyzer():
         }
 
     def _get_step_groups(self) -> Tuple[List[int], List]:
-        num_points = min(100, self.result_length)
-        step_size = max(1, round(self.result_length / num_points))
-        [r.load_steps(step_size) for r in self.results]
-        step_idxs = list(range(0, self.result_length, step_size))
-        return step_idxs, [[r.get_step(step_idx) for r in self.results] for step_idx in step_idxs]
+        if self._step_idxs is None:
+            num_points = min(50, self.result_length)
+            step_size = max(1, round(self.result_length / num_points))
+            if not self._results_loaded:
+                [r.load_steps(step_size) for r in self.results]
+                self._results_loaded = True
+            self._step_idxs = list(range(0, self.result_length, step_size))
+            self._step_groups = [[r.get_step(step_idx) for r in self.results] for step_idx in self._step_idxs]
+
+        return self._step_idxs, self._step_groups
+        

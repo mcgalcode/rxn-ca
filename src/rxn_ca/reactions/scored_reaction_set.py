@@ -32,7 +32,7 @@ class ScoredReactionSet():
 
     IDENTITY = "IDENTITY"
 
-    def __init__(self, reactions: list[ScoredReaction], phase_set: SolidPhaseSet, identity_score = 1):
+    def __init__(self, reactions: list[ScoredReaction], phase_set: SolidPhaseSet):
         """Initializes a SolidReactionSet object. Requires a list of possible reactions
         and the elements which should be considered available in the atmosphere of the
         simulation.
@@ -46,24 +46,14 @@ class ScoredReactionSet():
         self.reactant_map = {}
         self.reactions: List[ScoredReaction] = []
         self.rxn_map = {}
-        self._identity_score = identity_score
         
         # Replace strength of identity reaction with the depth of the hull its in
         for r in reactions:
-            self.add_rxn(r)
-
-    def _add_identity(self, phase):
-        if phase not in self.phases.gas_phases and phase is not SolidPhaseSet.FREE_SPACE:
-            self_rxn = ScoredReaction.self_reaction(phase, strength = self._identity_score)
-            existing = self.get_reactions([phase])
-            if len(existing) > 0 and not any([rxn.is_identity for rxn in existing]):
-                self.add_rxn(self_rxn)
-            elif len(existing) == 0:
-                self.add_rxn(self_rxn)        
+            self.add_rxn(r)  
 
     def rescore(self, scorer):
-        rescored = [rxn.rescore(scorer) for rxn in self.reactions if not rxn.is_identity]
-        return ScoredReactionSet(rescored, self.phases, self._identity_score)
+        rescored = [rxn.rescore(scorer) for rxn in self.reactions]
+        return ScoredReactionSet(rescored, self.phases)
 
     def add_rxn(self, rxn: ScoredReaction) -> None:
         reactant_set = frozenset(rxn.reactants)
@@ -72,9 +62,6 @@ class ScoredReactionSet():
         else:
             self.reactant_map[reactant_set].append(rxn)
             self.reactant_map[reactant_set] = sorted(self.reactant_map[reactant_set], key = lambda rxn: rxn.competitiveness, reverse = True)
-
-        for phase in rxn.all_phases:
-            self._add_identity(phase)
     
         self.rxn_map[str(rxn)] = rxn
         self.reactions.append(rxn)
@@ -91,19 +78,32 @@ class ScoredReactionSet():
         
         return filtered
 
-    def exclude_theoretical(self):
+    def exclude_theoretical(self, ensure_phases: List[str] = []):
         filtered = ScoredReactionSet([], self.phases)
         theoretical_phases = self.phases.get_theoretical_phases()
         for r in self.reactions:
-            containts_theoretical = False
+            contains_theoretical = False
             for p in r.all_phases:
-                if p in theoretical_phases:
-                    containts_theoretical = True
+                if p in theoretical_phases and p not in ensure_phases:
+                    contains_theoretical = True
 
-            if not containts_theoretical:
+            if not contains_theoretical:
                 filtered.add_rxn(r)
         
         return filtered
+    
+    def exclude_metastable(self, metastability_cutoff: float, ensure_phases: List[str] = []):
+        filtered = ScoredReactionSet([], self.phases)
+        for r in self.reactions:
+            contains_metastable = False
+            for p in r.all_phases:
+                if self.phases.get_e_above_hull(p) > metastability_cutoff and p not in ensure_phases:
+                    contains_metastable = True
+
+            if not contains_metastable:
+                filtered.add_rxn(r)
+        
+        return filtered        
 
     def exclude_phases(self, phase_list: List[str]):
         filtered = ScoredReactionSet([], self.phases)
@@ -165,7 +165,7 @@ class ScoredReactionSet():
     def search_all(self, products: list[str], reactants: list[str]) -> list[ScoredReaction]:
         return [rxn for rxn in self.reactions if set(rxn.products).issuperset(products) and set(rxn.reactants).issuperset(reactants)]
 
-    def search_reactants(self, reactants: list[str]) -> list[ScoredReaction]:
+    def search_reactants(self, reactants: list[str], exact = False) -> list[ScoredReaction]:
         """Returns all the reactions in this SolidReactionSet that produce all of the
         reactant phases specified.
 
@@ -175,7 +175,10 @@ class ScoredReactionSet():
         Returns:
             list[Reaction]: The matching reactions.
         """
-        return [rxn for rxn in self.reactions if set(rxn.reactants).issuperset(reactants)]
+        if not exact:
+            return [rxn for rxn in self.reactions if set(rxn.reactants).issuperset(reactants)]
+        else:
+            return [rxn for rxn in self.reactions if set(rxn.reactants) == set(reactants)]
     
     def plot_energies(self, bins=300):
         es = [r.energy_per_atom for r in self.reactions]

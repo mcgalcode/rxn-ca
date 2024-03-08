@@ -25,6 +25,7 @@ def get_entries(chem_sys: str,
         300, 
         stability_cutoff,
         formulas_to_include=ensure_phases,
+        calculate_e_above_hulls=True,
         **kwargs
     )
     return entry_set
