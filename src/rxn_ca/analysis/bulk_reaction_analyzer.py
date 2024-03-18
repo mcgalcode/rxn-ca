@@ -52,11 +52,11 @@ class BulkReactionAnalyzer():
     def _get_trace(self, name, xs, ys, legend="legend1"):
         return go.Scatter(name=name, x=xs, y=ys, mode='lines', line=dict(width=4), legend=legend)
 
-    def plot_elemental_amounts(self, **layout_kwargs) -> None:
+    def plot_elemental_amounts(self, num_points=None, **layout_kwargs) -> None:
         elements = list(self.step_analyzer.get_molar_elemental_composition(self.results[0].first_step).keys())
         traces = []
         
-        step_idxs, step_groups = self._get_step_groups()
+        step_idxs, step_groups = self._get_step_groups(num_points=num_points)
         amounts = [self.step_analyzer.get_molar_elemental_composition(sg) for sg in step_groups]
         for el in elements:
             ys = [a.get(el, 0) for a in amounts]
@@ -97,10 +97,13 @@ class BulkReactionAnalyzer():
             fig.add_trace(t)
 
         fig.show()
+    
+    def get_elemental_amounts_at(self, step_no):
+        step_group = self.get_steps(step_no)
+        return self.step_analyzer.get_molar_elemental_composition(step_group)
 
-    def get_layout(self, x_label, y_label, title, max_x, max_y=None):
-        return go.Layout(
-            title={
+    def get_layout(self, x_label, y_label, title, max_x, max_y=None, **layout_kwargs):
+        default_kwargs = dict(title={
                 'text' : title,
                 'x': 0.42,
                 'y': 0.92,
@@ -152,7 +155,13 @@ class BulkReactionAnalyzer():
             font=dict(
                 family="Lato",
                 size=18,
-            )            
+            )
+        )
+
+        updated = {**default_kwargs, **layout_kwargs}
+
+        return go.Layout(
+            **updated
         )
 
     def _get_plotly_fig(self,
@@ -162,12 +171,13 @@ class BulkReactionAnalyzer():
                         include_heating_trace=True,
                         use_heating_xaxis=False,
                         show_y_ticks_and_grids=False,
-                        max_y=None):
+                        max_y=None,
+                        **layout_kwargs):
         if use_heating_xaxis:
             x_label = "Temperature (K)"
         else:
             x_label = "Reaction Coordinate (arb. units)"
-        layout = self.get_layout(x_label, y_label, title, max_x, max_y=max_y)
+        layout = self.get_layout(x_label, y_label, title, max_x, max_y=max_y, **layout_kwargs)
 
         fig = go.Figure(layout=layout)
 
@@ -625,9 +635,10 @@ class BulkReactionAnalyzer():
             "phase_set": self.phase_set.as_dict()
         }
 
-    def _get_step_groups(self) -> Tuple[List[int], List]:
-        if self._step_idxs is None:
-            num_points = min(50, self.result_length)
+    def _get_step_groups(self, num_points=None) -> Tuple[List[int], List]:
+        if self._step_idxs is None or num_points is not None:
+            if num_points is None:
+                num_points = min(50, self.result_length)
             step_size = max(1, round(self.result_length / num_points))
             if not self._results_loaded:
                 [r.load_steps(step_size) for r in self.results]
