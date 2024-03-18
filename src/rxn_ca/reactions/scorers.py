@@ -24,7 +24,7 @@ def huttig_score_exp(t_tm_ratio):
     return math.exp(2.41*(t_tm_ratio) - 0.8)
 
 def huttig_score_softplus(t_tm_ratio):
-    return math.log(1 + math.exp(8 * (t_tm_ratio - 0.33)))
+    return 0.25 * math.log(1 + math.exp(30 * (t_tm_ratio - 0.33)))
 
 def erf(x):
     return 0.5 * (1 + math.erf(-35 * (x + 0.03)))
