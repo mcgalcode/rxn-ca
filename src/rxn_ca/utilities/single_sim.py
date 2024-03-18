@@ -56,18 +56,14 @@ def run_single_sim(recipe: ReactionRecipe,
             reaction_lib.phases,
             precursor_mole_ratios = recipe.reactant_amounts,
             size = recipe.simulation_size,
+            packing_fraction = recipe.packing_fraction
         )
 
     print(f'================= RUNNING SIMULATION =================')
 
-    atmosphere = {}
-    if recipe.atmospheric_phases is not None:
-        for p in recipe.atmospheric_phases:
-            atmosphere[p] = 1
-
     rxn_calculator = ReactionCalculator(
         LiquidSwapController.get_neighborhood_from_structure(initial_simulation.structure),
-        open_species=atmosphere
+        atmospheric_species=recipe.atmospheric_phases
     )
 
     controller = LiquidSwapController(

@@ -24,6 +24,7 @@ def setup_reaction(
 def setup_noise_reaction(
         phases: SolidPhaseSet,
         precursor_mole_ratios: Dict,
-        size: int = 15
+        size: int = 15,
+        packing_fraction = 1.0
     ):
-    return SetupRandomNoise(phases).setup(precursor_mole_ratios, size)
+    return SetupRandomNoise(phases).setup(precursor_mole_ratios, size, packing_efficiency=packing_fraction)
