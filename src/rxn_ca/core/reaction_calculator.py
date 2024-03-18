@@ -48,12 +48,12 @@ class ReactionCalculator():
         neighborhood_graph,
         scored_rxns: ScoredReactionSet = None,
         inertia = 1.75,
-        open_species = {},
+        atmospheric_species = [],
     ) -> None:
         self.rxn_set = scored_rxns
         self.inertia = inertia
         self.neighborhood_graph = neighborhood_graph
-        self.effective_open_distances = copy(open_species)
+        self.atmospheric_species = copy(atmospheric_species)
 
     def set_rxn_set(self, rxn_set: ScoredReactionSet):
         self.rxn_set = rxn_set
@@ -124,41 +124,56 @@ class ReactionCalculator():
             site_two_phase = site_two_state[DISCRETE_OCCUPANCY]
             possible_reactions = self.rxn_set.get_reactions([site_two_phase, site_one_phase])
 
-            if len(possible_reactions) > 0 and not possible_reactions[0].is_identity:
+            # Case 1) A neighboring empty site - if there are any gaseous phases present, now is the time to REACT!
+            if site_two_phase == SolidPhaseSet.FREE_SPACE:
+                interactions = self.atmospheric_interactions(site_one_state)
+            # Case 2) There are stoichiometrically plausible reactions between these two phases
+            elif len(possible_reactions) > 0:
                 interaction_score = self.adjust_score_for_distance(possible_reactions[0].competitiveness, distance)
-                interaction = SiteInteraction(
+                interactions = [SiteInteraction(
                     site_states=[site_one_state, site_two_state],
                     reactions=possible_reactions,
                     atmosphere_reactant=None,
                     score=interaction_score
-                )
+                )]
+             # Case 3) No reactions of any kind are plausible
             else:
-                interaction = SiteInteraction(
+                interactions = [SiteInteraction(
                     is_no_op=True,
                     score=self.inertia
-                )
+                )]
             
-            possible_interactions.append(interaction)
+            possible_interactions.extend(interactions)
 
+        # It's possible that a square might just dissolve as well
+        decomp_rxns = self.rxn_set.get_reactions([site_one_phase])
+
+        if len(decomp_rxns) > 0:
+            interaction_score = self.adjust_score_for_distance(decomp_rxns[0].competitiveness, 1)
+            decomp_interaction = SiteInteraction(
+                site_states=[site_one_state],
+                reactions=decomp_rxns,
+                atmosphere_reactant=None,
+                score=interaction_score
+            )
+            possible_interactions.append(decomp_interaction)
+
+        # The possibility of doing nothing is always present
         possible_interactions.append(SiteInteraction(
             is_no_op=True,
             score=self.inertia
         ))
-        # Add interactions with atmosphere
-        open_specie_interactions = self.interactions_with_open_species(site_one_state)
-        # print(open_specie_interactions)
-        possible_interactions = [*possible_interactions, *open_specie_interactions]
 
         return possible_interactions
 
-    def interactions_with_open_species(self, site_state: Dict):
+    def atmospheric_interactions(self, site_state: Dict):
         site_phase = site_state[DISCRETE_OCCUPANCY]
         interactions = []
 
-        for specie, dist in self.effective_open_distances.items():
+        for specie in self.atmospheric_species:
             rxns = self.rxn_set.get_reactions([site_phase, specie])
             if len(rxns) > 0:
-                interaction_score = self.adjust_score_for_distance(rxns[0].competitiveness, dist)
+                interaction_score = self.adjust_score_for_distance(rxns[0].competitiveness, 1)
                 interactions.append(SiteInteraction(
                     site_states=[site_state],
                     reactions=rxns,

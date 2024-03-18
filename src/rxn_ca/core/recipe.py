@@ -37,7 +37,8 @@ class ReactionRecipe(MSONable):
     score_type: str = ScoreTypes.TAMMAN_HUTTIG_SOFTPLUS_GIBBS_ERF
     additional_gas_phases: List[str] = field(default_factory=list)
     exact_phase_set: List[str] = None
-    atmospheric_phases: List[str] = None
+    atmospheric_phases: List[str] = field(default_factory=list)
+    packing_fraction: float = 1.0
     
     def __post_init__(self):
         self.chem_sys = format_chem_sys(self.chem_sys)
