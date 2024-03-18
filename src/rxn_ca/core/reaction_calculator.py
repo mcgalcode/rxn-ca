@@ -98,9 +98,6 @@ class ReactionCalculator():
                     gas_amts[product_phase] = product_volume
 
                 updates[GENERAL][GASES_EVOLVED] = gas_amts
-                # updates[SITES][site_id] = {
-                #     DISCRETE_OCCUPANCY: SolidPhaseSet.FREE_SPACE,
-                # }
             
             # Otherwise, if there is a selected product it must be solid, so just replace
             # the old phase with the new one and the updated volume
