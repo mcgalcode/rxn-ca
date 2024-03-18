@@ -216,10 +216,10 @@ class BulkReactionAnalyzer():
             curr_x = 0
             last_temp = None
             for step in self.heating_schedule.steps:
-                if step.temp != last_temp:
+                if step.temperature != last_temp:
                     xs.append(curr_x)
-                    xlabels.append(step.temp)
-                    last_temp = step.temp
+                    xlabels.append(step.temperature)
+                    last_temp = step.temperature
                 curr_x = curr_x + step.duration * step_size
 
 
