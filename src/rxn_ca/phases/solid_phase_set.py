@@ -16,7 +16,7 @@ from monty.serialization import loadfn
 from .gasses import DEFAULT_GASES
 
 import copy
-import json
+from enum import Enum
 import requests
 
 from ..utilities.helpers import normalize_dict, add_values_to_dict_by_addition
@@ -32,6 +32,12 @@ def process_composition_list(comp_list):
 
 def process_composition_dict(comp_dict):
     return { process_composition(c): v for c, v in comp_dict.items() }
+
+class MatterPhase(Enum):
+
+    SOLID  = "SOLID"
+    LIQUID = "LIQUID"
+    GAS    = "GAS"
 
 class SolidPhaseSet(PhaseSet):
 
@@ -166,6 +172,16 @@ class SolidPhaseSet(PhaseSet):
             bool: Whether or not it is a gas
         """
         return process_composition(phase) in self.gas_phases
+
+    def get_matter_phase(self, phase: str, temp: int = None):
+        if self.is_gas(phase):
+            return MatterPhase.GAS
+        if temp is None:
+            return MatterPhase.SOLID
+        elif self.is_melted(phase, temp):
+            return MatterPhase.LIQUID
+        else:
+            return MatterPhase.SOLID
 
     def get_melted_phases(self, temp: int) -> List[str]:
         """Return the subset of phases which are melted at the supplied temp
