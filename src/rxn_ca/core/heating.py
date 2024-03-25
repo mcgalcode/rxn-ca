@@ -76,21 +76,23 @@ class HeatingSchedule(MSONable):
             if tallied > step_idx:
                 return step.temperature
             
-    def get_xy_for_plot(self, step_size: int):
+    def get_xy_for_plot(self, max_x):
         curr_x = 0
         xs = []
         ys = []
 
+        total_duration = sum(step.duration for step in self.temperature_steps)
+        step_length = int(max_x) / total_duration
 
         for step in self.temperature_steps:
             xs.append(curr_x)
             ys.append(step.temperature)
-            curr_x += step.duration * step_size
+            curr_x += step.duration * step_length
             xs.append(curr_x)
             ys.append(step.temperature)            
 
         if len(self.temperature_steps) == 1:
-            xs.append(self.temperature_steps[0].duration * step_size)
+            xs.append(self.temperature_steps[0].duration * step_length)
             ys.append(self.temperature_steps[0].temperature)
 
         return xs, ys        

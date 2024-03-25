@@ -89,14 +89,13 @@ class ReactionStepAnalyzer():
                     else:
                         phase_amts[phase] = vol
 
-            if self.include_evolved_gases:
-                melted = step.get_general_state().get(GASES_EVOLVED, {})
+            gaseous = step.get_general_state().get(GASES_EVOLVED, {})
 
-                for phase, vol in melted.items():
-                    if phase in phase_amts:
-                        phase_amts[phase] += vol
-                    else:
-                        phase_amts[phase] = vol
+            for phase, vol in gaseous.items():
+                if phase in phase_amts:
+                    phase_amts[phase] += vol
+                else:
+                    phase_amts[phase] = vol
                     
 
         return phase_amts

@@ -2,6 +2,7 @@
 
 from rxn_ca.core.recipe import ReactionRecipe
 from rxn_ca.reactions import ReactionLibrary
+from rxn_ca.computing.schemas.ca_result_schema import compress_doc
 
 from rxn_ca.utilities.single_sim import run_single_sim
 from rxn_ca.utilities.parallel_sim import run_sim_parallel
@@ -22,29 +23,34 @@ parser = argparse.ArgumentParser(
 parser.add_argument('recipe_filename')
 parser.add_argument('-d', '--input-dir')
 parser.add_argument('-o', '--output-file')
-parser.add_argument('-r', '--reactions-file')
+parser.add_argument('-p', '--output-dir')
+parser.add_argument('-c', '--compress', action=argparse.BooleanOptionalAction)
 parser.add_argument('-l', '--reaction-library-file')
 parser.add_argument('-i', '--initial-simulation-file')
 
 parser.add_argument('-s', '--single', default=False, action='store_true')
+parser.add_argument('--store-lib', default=False, action=argparse.BooleanOptionalAction)
 
 args = parser.parse_args()
 
 output_file = args.output_file
+output_dir = args.output_dir
 recipe_filename = args.recipe_filename
-reactions_filename = args.reactions_file
 reaction_library_filename = args.reaction_library_file
 initial_simulation_filename = args.initial_simulation_file
+compress = args.compress
+store_lib = args.store_lib
 
 print_banner()
 
 print(f"Reading recipe from {recipe_filename}...")
 
 if output_file is None:
-    output_dir = os.path.dirname(recipe_filename)
+    output_fname = recipe_filename.split("/")[-1]
 
-    prefix = recipe_filename.split(".")[0]
-    output_fname = prefix + "-" + time.strftime("%Y-%m-%d-%H%M%S") + '.json'
+    if output_dir is None:
+        output_dir = os.path.dirname(recipe_filename)
+    
     output_file = os.path.join(output_dir, output_fname)
 
 print(f"Choosing {output_file} as output location")
@@ -52,6 +58,7 @@ print(f"Choosing {output_file} as output location")
 recipe = ReactionRecipe.from_file(recipe_filename)
 
 if reaction_library_filename is not None:
+    print(f"Reading reaction library from {reaction_library_filename}...")
     rxn_lib = ReactionLibrary.from_file(reaction_library_filename)
     reaction_set = None
     phases = rxn_lib.phases
@@ -83,4 +90,17 @@ else:
 
 print(f'================= SAVING RESULTS to {output_file} =================')
 
-result.to_file(output_file)
+
+if args.compress:
+    print("Compressing result...")
+    compressed_fpath = output_file.split(".")[0] + "_compressed.json"
+    compressed = compress_doc(result, num_steps=500)
+    if not store_lib:
+        print("Discarding reaction library...")
+        compressed.reaction_library = None
+    print(f"Saving compressed results to {compressed_fpath}")
+    compressed.to_file(compressed_fpath)
+else:
+    print(f"Saving original results to {output_file}...")
+    result.to_file(output_file)
+

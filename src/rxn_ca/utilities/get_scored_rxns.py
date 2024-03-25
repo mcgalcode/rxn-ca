@@ -5,7 +5,6 @@ from ..phases import SolidPhaseSet
 
 from ..reactions import ReactionLibrary, ScoredReaction, ScoredReactionSet, score_rxns
 from ..reactions.scorers import BasicScore, TammanHuttigScoreErf
-from rxn_network.entries.entry_set import GibbsEntrySet
 from tqdm import tqdm
 
 from typing import List
@@ -20,7 +19,10 @@ def fn(temp):
     rxn_set  = _scoring_globals.get('base_rxns')
 
     scorer = score_class(temp=temp, phase_set=phase_set)
-    rset = rxn_set.set_new_temperature(temp)
+    if _scoring_globals.get("rxns_at_tmps") is None:
+        rset = rxn_set.set_new_temperature(temp)
+    else:
+        rset = _scoring_globals.get("rxns_at_tmps").get(temp)
 
     scored_rxns: List[ScoredReaction] = score_rxns(rset, scorer, phase_set=phase_set)
     scored_rset = ScoredReactionSet(scored_rxns, phase_set)
@@ -31,6 +33,7 @@ def get_scored_rxns(rxn_set: ReactionSet,
                     temps: List = None,
                     scorer_class: BasicScore = TammanHuttigScoreErf,
                     phase_set: SolidPhaseSet = None,
+                    rxns_at_temps = None,
                     parallel=True):
 
     lib = ReactionLibrary(phases=phase_set)
@@ -38,24 +41,31 @@ def get_scored_rxns(rxn_set: ReactionSet,
     if heating_sched is not None:
         temps = heating_sched.all_temps
 
-    reaction_sets = rxn_set.compute_at_temperatures(temps)
-
-    global _scoring_globals
-
-    _scoring_globals['score_class'] = scorer_class
-    _scoring_globals['phase_set'] = phase_set
-    _scoring_globals['base_rxns'] = rxn_set
+    if rxns_at_temps is not None:
+        rxns_at_temps = {int(t): r for t, r in rxns_at_temps.items() }
 
     if parallel:
+        global _scoring_globals
+
+        _scoring_globals['score_class'] = scorer_class
+        _scoring_globals['phase_set'] = phase_set
+        _scoring_globals['base_rxns'] = rxn_set
+
+        if rxns_at_temps is not None:
+            _scoring_globals['rxns_at_tmps'] = rxns_at_temps
+                
         with mp.get_context('fork').Pool(mp.cpu_count()) as pool:
-            print(temps)
+
             results = pool.map(fn, temps)
             for t, r in zip(temps, results):
                 lib.add_rxns_at_temp(r, t)
-    else:    
+    else:
+        if rxns_at_temps is None:
+            rxns_at_temps = rxn_set.compute_at_temperatures(temps)
+        
         for t in temps:
             scorer = scorer_class(temp=t, phase_set=phase_set)
-            rset = reaction_sets.get(t)
+            rset = rxns_at_temps.get(t)
 
             scored_rxns: List[ScoredReaction] = score_rxns(rset, scorer, phase_set=phase_set)
             scored_rset = ScoredReactionSet(scored_rxns, lib.phases)

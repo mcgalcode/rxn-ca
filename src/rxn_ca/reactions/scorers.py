@@ -18,7 +18,7 @@ def tamman_score_exp(t_tm_ratio):
     return math.exp(4.82*(t_tm_ratio) - 3.21)
 
 def tamman_score_softplus(t_tm_ratio):
-    return math.log(1 + math.exp(14 * (t_tm_ratio - 0.63)))
+    return math.log(1 + math.exp(14 * (t_tm_ratio - 0.8)))
 
 def huttig_score_exp(t_tm_ratio):
     return math.exp(2.41*(t_tm_ratio) - 0.8)
@@ -92,7 +92,6 @@ class TammanHuttigScoreSoftplus(BasicScore):
 class TammanHuttigScoreErf(BasicScore):
     # https://en.wikipedia.org/wiki/Tammann_and_H%C3%BCttig_temperatures
 
-
     def score(self, rxn: ComputedReaction):
         phases = [c.reduced_formula for c in rxn.reactants]
         non_gasses = [p for p in phases if p not in self.phases.gas_phases]
@@ -102,12 +101,52 @@ class TammanHuttigScoreErf(BasicScore):
         # Softplus adjustment
         delta_g_adjustment = erf(rxn.energy_per_atom)
 
-        if len(non_gasses) < len(phases):
+        if len(non_gasses) == 1:
             # Huttig
             return huttig_score_softplus(self.temp / min_mp) * delta_g_adjustment
         else:
             # Tamman
             return tamman_score_softplus(self.temp / min_mp) * delta_g_adjustment
+
+class TammanScore(BasicScore):
+    # https://en.wikipedia.org/wiki/Tammann_and_H%C3%BCttig_temperatures
+
+    def score(self, rxn: ComputedReaction):
+        phases = [c.reduced_formula for c in rxn.reactants]
+        non_gasses = [p for p in phases if p not in self.phases.gas_phases]
+        mps = [self.phases.get_melting_point(p) for p in non_gasses]
+        min_mp = min(mps)
+
+        # Softplus adjustment
+        delta_g_adjustment = erf(rxn.energy_per_atom)
+        return tamman_score_softplus(self.temp / min_mp) * delta_g_adjustment  
+
+class ConstantScore(BasicScore):
+
+    def score(self, _):
+        return 1.0
+
+class GibbsErfScore(BasicScore):
+        
+    def score(self, rxn: ComputedReaction):
+        return erf(rxn.energy_per_atom)
+    
+
+class TammanTightLinear(BasicScore):
+
+    def score(self, rxn: ComputedReaction):
+        phases = [c.reduced_formula for c in rxn.reactants]
+        non_gasses = [p for p in phases if p not in self.phases.gas_phases]
+        mps = [self.phases.get_melting_point(p) for p in non_gasses]
+        min_mp = min(mps)
+
+        def _score(x):
+            return 1/2*(1 + math.erf(20*(x -0.6))) * (1/0.6*x)
+
+        # Softplus adjustment
+        delta_g_adjustment = erf(rxn.energy_per_atom)
+        return _score(self.temp / min_mp) * delta_g_adjustment  
+
     
 
 

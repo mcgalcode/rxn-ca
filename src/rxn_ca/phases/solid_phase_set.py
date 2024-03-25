@@ -81,14 +81,11 @@ class SolidPhaseSet(PhaseSet):
         volumes, densities = get_densities_and_vols_from_entry_set(entry_set)
         exp_obs = get_exp_observ(entry_set)
         melting_points = get_melting_points(phase_names)
-
-        def format_metadata(metadata_dict):
-            return { Composition(k).reduced_formula: v for k, v in metadata_dict.items() }
         
-        volumes = { **volumes, **format_metadata(entry_metadata.get("volumes", {})) }
-        densities = { **densities, **format_metadata(entry_metadata.get("densities", {})) }
-        melting_points = { **melting_points, **format_metadata(entry_metadata.get("melting_points", {})) }
-        exp_obs = { **exp_obs, **format_metadata(entry_metadata.get("experimentally_observed", {})) }
+        volumes = { **volumes, **process_composition_dict(entry_metadata.get("volumes", {})) }
+        densities = { **densities, **process_composition_dict(entry_metadata.get("densities", {})) }
+        melting_points = { **melting_points, **process_composition_dict(entry_metadata.get("melting_points", {})) }
+        exp_obs = { **exp_obs, **process_composition_dict(entry_metadata.get("experimentally_observed", {})) }
 
         return cls(
             phase_names,

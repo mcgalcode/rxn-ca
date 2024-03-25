@@ -4,6 +4,8 @@ from .heating import HeatingSchedule
 from typing import Dict, List
 from ..utilities.helpers import format_chem_sys
 from ..reactions.scorers import TammanHuttigScoreErf, TammanHuttigScoreExponential, TammanHuttigScoreSoftplus
+from ..phases.solid_phase_set import process_composition_dict, process_composition_list
+
 import json
 
 from enum import Enum
@@ -28,7 +30,6 @@ class ReactionRecipe(MSONable):
 
     heating_schedule: HeatingSchedule
     reactant_amounts: Dict[str, float]
-    chem_sys: str
     simulation_size: int = 15
     num_realizations: int = 3
     exclude_phases: List[str] = field(default_factory=list)
@@ -41,7 +42,9 @@ class ReactionRecipe(MSONable):
     packing_fraction: float = 1.0
     
     def __post_init__(self):
-        self.chem_sys = format_chem_sys(self.chem_sys)
+        self.reactant_amounts = process_composition_dict(self.reactant_amounts)
+        self.atmospheric_phases = process_composition_list(self.atmospheric_phases)
+        self.additional_gas_phases = process_composition_list(self.additional_gas_phases)
 
     def to_file(self, fname: str):
         with open(fname, 'w+') as f:

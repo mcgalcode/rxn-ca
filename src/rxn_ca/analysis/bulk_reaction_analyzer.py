@@ -22,11 +22,11 @@ class BulkReactionAnalyzer():
     @classmethod
     def from_result_doc_file(cls, fname: str) -> BulkReactionAnalyzer:
         doc: RxnCAResultDoc = RxnCAResultDoc.from_file(fname)
-        return cls(doc.results, doc.reaction_library.phases, doc.recipe.heating_schedule)
+        return cls(doc.results, doc.phases, doc.recipe.heating_schedule)
     
     @classmethod
     def from_result_doc(cls, doc: RxnCAResultDoc) -> BulkReactionAnalyzer:
-        return cls(doc.results, doc.reaction_library.phases, doc.recipe.heating_schedule)
+        return cls(doc.results, doc.phases, doc.recipe.heating_schedule)
     
     def __init__(self, results: List[ReactionResult], phase_set: SolidPhaseSet, heating_sched: HeatingSchedule):
         """Initializes a ReactionResult with the reaction set used in the simulation
@@ -91,14 +91,25 @@ class BulkReactionAnalyzer():
 
     def all_phases_present(self):
         sgs = [self.get_analyzer(sg).phases_present() for sg in self.loaded_step_groups]
+
         all_phases = set()
         for sg in sgs:
             all_phases.update(sg)
         return list(all_phases)
+    
+    def phases_with_prevalence(self, prevalence):
+        analyses = [self.get_analyzer(sg).get_all_mass_fractions() for sg in self.loaded_step_groups]
+        all_phases = set()
+        
+        for a in analyses:
+            for p, v in a.items():
+                if v > prevalence:
+                    all_phases.add(p)
+        return list(all_phases)
 
     def _get_step_groups(self) -> Tuple[List[int], List]:
         if self._step_idxs is None:
-            num_points = min(50, self.result_length)
+            num_points = self.result_length / 2
             step_size = max(1, round(self.result_length / num_points))
             if not self._results_loaded:
                 [r.load_steps(step_size) for r in self.results]

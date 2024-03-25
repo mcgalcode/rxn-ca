@@ -84,6 +84,7 @@ def run_single_sim(recipe: ReactionRecipe,
         recipe=recipe,
         results=[result],
         reaction_library=reaction_lib,
+        phases=reaction_lib.phases
     )
 
     return result_doc

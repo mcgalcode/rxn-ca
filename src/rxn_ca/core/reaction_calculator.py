@@ -47,7 +47,7 @@ class ReactionCalculator():
     def __init__(self,
         neighborhood_graph,
         scored_rxns: ScoredReactionSet = None,
-        inertia = 1.75,
+        inertia = 2.0,
         atmospheric_species = [],
     ) -> None:
         self.rxn_set = scored_rxns
@@ -119,28 +119,34 @@ class ReactionCalculator():
         for nb_id, distance in self.neighborhood_graph.neighbors_of(site_one_id, include_weights=True):
             site_two_state = state.get_site_state(nb_id)
             site_two_phase = site_two_state[DISCRETE_OCCUPANCY]
+            # print(site_one_phase, site_two_phase)
             possible_reactions = self.rxn_set.get_reactions([site_two_phase, site_one_phase])
+            for spec in self.atmospheric_species:
+                possible_reactions.extend(self.rxn_set.get_reactions([site_one_phase, site_two_phase, spec]))
 
             # Case 1) A neighboring empty site - if there are any gaseous phases present, now is the time to REACT!
+            interactions = []
             if site_two_phase == SolidPhaseSet.FREE_SPACE:
-                interactions = self.atmospheric_interactions(site_one_state)
+                interactions.extend(self.atmospheric_interactions(site_one_state))
             # Case 2) There are stoichiometrically plausible reactions between these two phases
             elif len(possible_reactions) > 0:
                 interaction_score = self.adjust_score_for_distance(possible_reactions[0].competitiveness, distance)
-                interactions = [SiteInteraction(
+                interactions.extend([SiteInteraction(
                     site_states=[site_one_state, site_two_state],
                     reactions=possible_reactions,
                     atmosphere_reactant=None,
                     score=interaction_score
-                )]
+                )])
              # Case 3) No reactions of any kind are plausible
-            else:
-                interactions = [SiteInteraction(
-                    is_no_op=True,
-                    score=self.inertia
-                )]
-            
-            possible_interactions.extend(interactions)
+            # else:
+        possible_interactions.append(SiteInteraction(
+            is_no_op=True,
+            score=self.inertia
+        ))
+
+        # print([i.score for i in interactions])
+        
+        possible_interactions.extend(interactions)
 
         # It's possible that a square might just dissolve as well
         decomp_rxns = self.rxn_set.get_reactions([site_one_phase])

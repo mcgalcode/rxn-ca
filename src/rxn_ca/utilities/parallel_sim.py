@@ -72,6 +72,7 @@ def run_sim_parallel(recipe: ReactionRecipe,
         recipe=recipe,
         results=good_results,
         reaction_library=reaction_lib,
+        phases=reaction_lib.phases
     )
 
     return result_doc

@@ -51,24 +51,6 @@ class ScoredReaction:
         )
 
     @classmethod
-    def self_reaction(cls, phase: str, strength = 100) -> ScoredReaction:
-        """Instantiates a reaction object representing the identity reaction, i.e. this phase
-        reacting to form itself.
-
-        Args:
-            phase (str): The string name for this phase e.g. LiO2 or Na
-
-        Returns:
-            Reaction: The Reaction object representing the identity reaction
-        """
-
-        reactants = {phase: 1}
-
-        products = {phase: 1}
-
-        return cls(reactants, products, strength, energy_per_atom = 0.0)
-
-    @classmethod
     def from_rxn_network(cls, score, original_rxn: BasicReaction, volumes: typing.Dict) -> ScoredReaction:
         react_dict = { comp.reduced_formula: round(-coeff * volumes.get(comp.reduced_formula), 2) for comp, coeff in original_rxn.reactant_coeffs.items() }
         product_dict = { comp.reduced_formula: round(coeff * volumes.get(comp.reduced_formula), 2) for comp, coeff in original_rxn.product_coeffs.items() }

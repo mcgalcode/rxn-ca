@@ -164,6 +164,45 @@ class ScoredReactionSet():
 
     def search_all(self, products: list[str], reactants: list[str]) -> list[ScoredReaction]:
         return [rxn for rxn in self.reactions if set(rxn.products).issuperset(products) and set(rxn.reactants).issuperset(reactants)]
+    
+    def search_overlap(self,
+                       possible_reactants: List[str] = [],
+                       required_reactants: List[str] = [],
+                       possible_products: List[str] = [],
+                       required_products: List[str] = [],
+                       minimum_score=None) -> list[ScoredReaction]:
+        filtered = []
+        if len(possible_reactants) > 0:
+            all_possible_reactants = set([*possible_reactants, *required_reactants])
+
+        if len(possible_products) > 0:
+            all_possible_products = set([*possible_products, *required_products])
+
+        for rxn in self.reactions:
+            disqualified = False
+            if not disqualified and len(required_reactants) > 0:
+                disqualified = not set(rxn.reactants).issuperset(required_reactants)
+
+            if not disqualified and len(required_products) > 0:
+                disqualified = not set(rxn.products).issuperset(required_products)
+            
+            if not disqualified and len(possible_reactants) > 0:
+                disqualified = not all_possible_reactants.issuperset(rxn.reactants)
+
+            if not disqualified and len(possible_products) > 0:
+                disqualified = not all_possible_products.issuperset(rxn.products)
+
+            if not disqualified and minimum_score is not None:
+                disqualified = rxn.competitiveness < minimum_score
+
+            if not disqualified:
+                filtered.append(rxn)
+
+        filtered = sorted(filtered, key=lambda r: r.competitiveness, reverse=True)
+        return filtered
+    
+    def search_score(self, score):
+        return [r for r in self.reactions if r.competitiveness > score]
 
     def search_reactants(self, reactants: list[str], exact = False) -> list[ScoredReaction]:
         """Returns all the reactions in this SolidReactionSet that produce all of the

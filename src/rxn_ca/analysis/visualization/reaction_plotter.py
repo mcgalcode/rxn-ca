@@ -6,6 +6,9 @@ from .phase_trace_calculator import PhaseTraceCalculator, PhaseTraceConfig, Phas
 from .layout import RxnCALayout
 from .rip_plotter import RIPPlotter
 import plotly.graph_objects as go
+from ...phases.solid_phase_set import MatterPhase
+
+from pymatgen.core.composition import Composition
 
 from typing import List, Dict
 
@@ -14,13 +17,16 @@ class ReactionPlotter():
     the steps that the simulation proceeded through, and the set of reactions that
     was used in the simulation.
     """
+
+    UNFOCUS_COLOR = "rgb(220,220,220)"
     
     def __init__(self,
                  bulk_analyzer: BulkReactionAnalyzer,
                  trace_config: PhaseTraceConfig = PhaseTraceConfig(),
                  include_heating_trace: bool = False,
                  rip_config: Dict = None,
-                 phase_colors: Dict = None):
+                 phase_colors: Dict = None,
+                 focus_phases: List[str] = None):
         """Initializes a ReactionResult with the reaction set used in the simulation
 
         Args:
@@ -36,10 +42,10 @@ class ReactionPlotter():
         self.layout = RxnCALayout(self.bulk_analyzer.get_step_size(), self.bulk_analyzer.heating_schedule)
         self.rip_config = rip_config
         self.phase_colors = phase_colors
+        self.focus_phases = focus_phases
 
     def get_heating_trace(self):
-        step_size = self.bulk_analyzer.get_step_size()
-        heating_xs, heating_ys = self.bulk_analyzer.heating_schedule.get_xy_for_plot(step_size=step_size)
+        heating_xs, heating_ys = self.bulk_analyzer.heating_schedule.get_xy_for_plot(self.bulk_analyzer.result_length)
         return go.Scatter(
             name="Temperature",
             x=heating_xs,
@@ -90,7 +96,7 @@ class ReactionPlotter():
         )
         return rip_trace
     
-    def _get_basic_phase_trace_fig(self, title, y_axis, phase_traces: List[PhaseTrace]):
+    def _get_basic_phase_trace_fig(self, title, y_axis, phase_traces: List[PhaseTrace], **plotting_kwargs):
         fig = self.layout.get_plotly_fig(
             y_axis,
             title,
@@ -100,6 +106,15 @@ class ReactionPlotter():
 
         for t in phase_traces:
             plotly_trace = self._get_plotly_phase_trace(t)
+            if plotting_kwargs.get("focus_phases") is not None and t.name not in plotting_kwargs.get("focus_phases"):
+                plotly_trace.line.update(color=ReactionPlotter.UNFOCUS_COLOR)
+            
+            if plotting_kwargs.get("focus_chemsys") is not None:
+                els = [str(el) for el in Composition(t.name).elements]
+                desired = set(plotting_kwargs.get("focus_chemsys").split("-"))
+                if not desired.issuperset(els):
+                    plotly_trace.line.update(color=ReactionPlotter.UNFOCUS_COLOR)
+
             fig.add_trace(plotly_trace)
             if self.rip_config is not None:
                 rip_trace = self._get_rip_trace(t, fig.data[-1])
@@ -114,13 +129,15 @@ class ReactionPlotter():
                    quantity: AnalysisQuantity,
                    mode: AnalysisMode,
                    title: str,
-                   ylabel: str) -> None:
-        phase_traces = self.trace_calculator.get_general_traces(self.trace_config, quantity, mode)
-
+                   ylabel: str,
+                   matter_phases: List[MatterPhase] = None,
+                   **plotting_kwargs) -> None:
+        phase_traces = self.trace_calculator.get_general_traces(self.trace_config, quantity, mode, matter_phases=matter_phases)
         fig = self._get_basic_phase_trace_fig(
             title,
             ylabel,
-            phase_traces
+            phase_traces,
+            **plotting_kwargs
         )
 
         if mode == AnalysisMode.FRACTIONAL:
@@ -162,7 +179,8 @@ class ReactionPlotter():
             AnalysisQuantity.MOLES,
             AnalysisMode.FRACTIONAL,
             "Fraction",
-            "Molar Fraction"
+            "Molar Fraction",
+            matter_phases=[MatterPhase.SOLID, MatterPhase.LIQUID]
         )
 
     def plot_molar_phase_amounts(self) -> None:
@@ -170,7 +188,8 @@ class ReactionPlotter():
             AnalysisQuantity.MOLES,
             AnalysisMode.ABSOLUTE,
             "Amt.",
-            "Molar Amts."
+            "Molar Amts.",
+            matter_phases=[MatterPhase.SOLID, MatterPhase.LIQUID]
         )
         
     def plot_phase_volumes(self):
@@ -178,7 +197,8 @@ class ReactionPlotter():
             AnalysisQuantity.VOLUME,
             AnalysisMode.ABSOLUTE,
             "Amt.",
-            "Volume"
+            "Volume",
+            matter_phases=[MatterPhase.SOLID, MatterPhase.LIQUID]
         )
     
     def plot_phase_masses(self):
@@ -186,15 +206,18 @@ class ReactionPlotter():
             AnalysisQuantity.MASS,
             AnalysisMode.ABSOLUTE,
             "Amt.",
-            "Mass"
+            "Mass",
+            matter_phases=[MatterPhase.SOLID, MatterPhase.LIQUID]
         ) 
 
-    def plot_mass_fractions(self):
+    def plot_mass_fractions(self, **plotting_kwargs):
         return self.plot_value(
             AnalysisQuantity.MASS,
             AnalysisMode.FRACTIONAL,
             "Fraction",
-            "Mass"
+            "Mass",
+            matter_phases=[MatterPhase.SOLID, MatterPhase.LIQUID],
+            **plotting_kwargs
         )
 
 
