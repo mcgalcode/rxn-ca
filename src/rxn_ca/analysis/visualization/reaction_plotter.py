@@ -74,13 +74,15 @@ class ReactionPlotter():
         return default_trace
     
     def _get_rip_trace(self, pt: PhaseTrace, plotly_trace: go.Scatter):
-        freq = 5
+        freq = 10
         xs = self.bulk_analyzer.loaded_step_idxs[::freq]
         ys = pt.ys[::freq]
         if pt.name in self.rip_config.get("reactants"):
             mdict = dict(symbol= "circle", size=12)
         elif pt.name in self.rip_config.get("products"):
             mdict = dict(symbol= "diamond", size=12)
+        elif pt.name in self.rip_config.get("byproducts", []):
+            mdict = dict(symbol= "triangle-up", size=14)
         else:
             mdict = dict(symbol= "x", size=12)        
         
@@ -147,9 +149,12 @@ class ReactionPlotter():
             all_phases = [t.name for t in phase_traces]
             reactants = self.rip_config.get("reactants")
             products = self.rip_config.get("products")
-            impurities = set(all_phases) - set(reactants) - set(products)
+            byproducts = self.rip_config.get("byproducts", [])
+            impurities = set(all_phases) - set(reactants) - set(products) - set(byproducts)
+
+            all_products = list(set(products).union(set(byproducts)))
             rip_generator = RIPPlotter()
-            rip_traces = rip_generator.get_rip_traces(reactants, impurities, products, self.bulk_analyzer.loaded_step_idxs, phase_traces)
+            rip_traces = rip_generator.get_rip_traces(reactants, impurities, all_products, self.bulk_analyzer.loaded_step_idxs, phase_traces)
             for rt in rip_traces[::-1]:
                 fig.add_trace(rt)
 

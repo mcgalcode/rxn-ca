@@ -116,13 +116,23 @@ class ReactionCalculator():
         # Look through neighborhood, enumerate possible reactions
         possible_interactions = []
 
+        any_neighboring_free_space = False
+        for nb_id in self.neighborhood_graph.neighbors_of(site_one_id, include_weights=False):
+            site_two_state = state.get_site_state(nb_id)
+            site_two_phase = site_two_state[DISCRETE_OCCUPANCY]
+            if site_two_phase is SolidPhaseSet.FREE_SPACE:
+                any_neighboring_free_space = True
+
+
         for nb_id, distance in self.neighborhood_graph.neighbors_of(site_one_id, include_weights=True):
             site_two_state = state.get_site_state(nb_id)
             site_two_phase = site_two_state[DISCRETE_OCCUPANCY]
             # print(site_one_phase, site_two_phase)
             possible_reactions = self.rxn_set.get_reactions([site_two_phase, site_one_phase])
-            for spec in self.atmospheric_species:
-                possible_reactions.extend(self.rxn_set.get_reactions([site_one_phase, site_two_phase, spec]))
+
+            if any_neighboring_free_space:
+                for spec in self.atmospheric_species:
+                    possible_reactions.extend(self.rxn_set.get_reactions([site_one_phase, site_two_phase, spec]))
 
             # Case 1) A neighboring empty site - if there are any gaseous phases present, now is the time to REACT!
             interactions = []
