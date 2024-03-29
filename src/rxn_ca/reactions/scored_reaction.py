@@ -162,6 +162,20 @@ class ScoredReaction:
         except:
             print(phase, str(self))
 
+    def product_stoich_fraction(self, phase: str) -> Number:
+        """Returns the stoichiometry in this reaction for the desired product phase.
+
+        Args:
+            phase (str): The phase whose stoichiometry is desired
+
+        Returns:
+            Number:
+        """
+        try:
+            return self._products[phase] / self.total_product_stoich
+        except:
+            print(phase, str(self))
+
     def solid_reactant_stoich_fraction(self, phase: str) -> Number:
         """Returns the stoichiometry in this reaction for the desired product phase.
 

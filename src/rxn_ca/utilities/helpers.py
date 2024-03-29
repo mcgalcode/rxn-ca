@@ -1,6 +1,7 @@
 from typing import Dict, Union, List
 
 from copy import copy
+from pymatgen.core.composition import Composition
 
 def normalize_dict(d: Dict):
     total = sum(d.values())
@@ -22,3 +23,9 @@ def format_chem_sys(chem_sys: Union[List, str]):
         copy_arr = copy(chem_sys)
         copy_arr.sort()
         return copy_arr
+    
+def is_in_chemsys(phase, chemsys: Union[List, str]):
+    els = [str(el) for el in Composition(phase).elements]
+    if type(chemsys) is str:
+        chemsys = chemsys.split("-")
+    return set(chemsys).issuperset(els)

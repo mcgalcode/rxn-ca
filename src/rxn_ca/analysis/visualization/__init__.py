@@ -2,3 +2,4 @@ from .phase_trace_calculator import PhaseTrace, PhaseTraceConfig, PhaseTraceCalc
 from .layout import RxnCALayout
 from .reaction_plotter import ReactionPlotter
 from .rip_plotter import RIPPlotter
+from .reaction_graph import ReactionGraph
