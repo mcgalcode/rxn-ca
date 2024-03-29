@@ -46,25 +46,42 @@ class ScoredReactionSet():
         self.reactant_map = {}
         self.reactions: List[ScoredReaction] = []
         self.rxn_map = {}
+        self.rxn_to_id = {}
+        self.id_to_rxn = {}
         
         # Replace strength of identity reaction with the depth of the hull its in
         for r in reactions:
-            self.add_rxn(r)  
+            self.add_rxn(r)
+
 
     def rescore(self, scorer):
         rescored = [rxn.rescore(scorer) for rxn in self.reactions]
         return ScoredReactionSet(rescored, self.phases)
 
-    def add_rxn(self, rxn: ScoredReaction) -> None:
+    def add_rxn(self, rxn: ScoredReaction, rxn_id: int = None) -> None:
         reactant_set = frozenset(rxn.reactants)
         if self.reactant_map.get(reactant_set) is None:
             self.reactant_map[reactant_set] = [rxn]
         else:
             self.reactant_map[reactant_set].append(rxn)
             self.reactant_map[reactant_set] = sorted(self.reactant_map[reactant_set], key = lambda rxn: rxn.competitiveness, reverse = True)
-    
-        self.rxn_map[str(rxn)] = rxn
+        
+        rxn_str = str(rxn)
+
+        if rxn_id is None:
+            rxn_id = len(self.rxn_to_id)
+
+        self.rxn_to_id[rxn_str] = rxn_id
+        self.id_to_rxn[rxn_id] = rxn
+        self.rxn_map[rxn_str] = rxn
         self.reactions.append(rxn)
+
+    def get_rxn_id(self, rxn: ScoredReaction) -> int:
+        r_str = str(rxn)
+        return self.rxn_to_id.get(r_str)
+    
+    def get_rxn_by_id(self, id: int) -> ScoredReaction:
+        return self.id_to_rxn.get(id)
 
     def exclude_pure_els(self):
         filtered = ScoredReactionSet([])

@@ -73,8 +73,8 @@ class HeatingScheduleRunner():
                 results.append(result)
             elif isinstance(step, RegrindStep):
                 analyzer = ReactionStepAnalyzer(reaction_lib.phases)
-                last_step = results[-1].output
-                amts = analyzer.get_all_mole_fractions(last_step)
+                analyzer.set_step_group(results[-1].output)
+                amts = analyzer.get_all_mole_fractions()
                 new_amts = { p: amt for p, amt in amts.items() if amt > 0.01}
 
                 reground_state = setup_noise_reaction(

@@ -12,7 +12,7 @@ from pylattica.core.basic_controller import BasicController
 from .normalizers import normalize
 from ..phases.solid_phase_set import SolidPhaseSet
 from .reaction_result import ReactionResult
-from .constants import VOLUME, GASES_EVOLVED, GASES_CONSUMED
+from .constants import VOLUME, GASES_EVOLVED, REACTION_CHOSEN
 from ..reactions import ScoredReactionSet, ScoredReaction
 
 from dataclasses import dataclass, field
@@ -75,6 +75,8 @@ class ReactionCalculator():
         # many possible reactions between two precursors
         rxns: List[ScoredReaction] = selected_interaction.reactions
         selected_reaction: ScoredReaction = choose_from_list(rxns, [rxn.competitiveness for rxn in rxns])
+        selected_reaction_id: int = self.rxn_set.get_rxn_id(selected_reaction)
+        updates[GENERAL][REACTION_CHOSEN] = selected_reaction_id
 
         # Proceed this reaction at all relevant site states
         for site_state in selected_interaction.site_states:

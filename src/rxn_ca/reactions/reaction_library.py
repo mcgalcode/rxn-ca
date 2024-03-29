@@ -43,6 +43,7 @@ class ReactionLibrary(MSONable):
     def __init__(self, phases: SolidPhaseSet):
         self.lib: Dict[int, ScoredReactionSet] = {}
         self.phases = phases
+        self.metadata = {}
 
     def add_rxns_at_temp(self, rxns: ScoredReactionSet, temp: int) -> int:
         self.lib[int(temp)] = rxns
@@ -57,6 +58,24 @@ class ReactionLibrary(MSONable):
     
     def get_rxns_at_temp(self, temp: int) -> ScoredReactionSet:
         return self.lib[temp]
+    
+    def get_lib_from_ids(self, rxn_ids: List[int]) -> ReactionLibrary:
+        deduped_ids = list(set(rxn_ids))
+        lib = ReactionLibrary(self.phases)
+        for t, rxns in self.lib.items():
+            pruned_rxn_set = ScoredReactionSet([], lib.phases)
+            for rxn_id in deduped_ids:
+                rxn = rxns.get_rxn_by_id(rxn_id)
+                pruned_rxn_set.add_rxn(rxn, rxn_id)
+                
+            lib.add_rxns_at_temp(pruned_rxn_set, t)
+        return lib
+    
+    def add_metadata(self, rxn_id, metadata):
+        if rxn_id not in self.metadata:
+            self.metadata[rxn_id] = metadata
+        else:
+            self.metadata[rxn_id] = {**self.metadata[rxn_id], **metadata}
     
     def limit_phase_set(self, phases) -> ReactionLibrary:
         lib = ReactionLibrary(self.phases)

@@ -1,6 +1,7 @@
 from typing import List
 
 from ...core.recipe import ReactionRecipe
+from ...core.constants import REACTION_CHOSEN
 from ...core.reaction_result import ReactionResult
 from ...reactions.reaction_library import ReactionLibrary
 from ...phases.solid_phase_set import SolidPhaseSet
@@ -16,33 +17,26 @@ class RxnCAResultDoc(BaseSchema):
     results: List[ReactionResult]
     reaction_library: ReactionLibrary = None
     phases: SolidPhaseSet = None
-    
-    # @classmethod
-    # def from_dict(cls, d):
-    #     if d.get('reaction_library') is not None:
-    #         rlib = ReactionLibrary.from_dict(d['reaction_library'])
-    #     else:
-    #         rlib = None
-
-    #     return cls(
-    #         recipe = ReactionRecipe.from_dict(d['recipe']),
-    #         results = [ReactionResult.from_dict(d) for d in  d["results"]],
-    #         reaction_library = rlib,
-    #     )
-
-    # def as_dict(self):
-    #     d = super().as_dict()
-    #     if self.reaction_library is not None:
-    #         rlib = self.reaction_library.as_dict()
-    #     else:
-    #         rlib = None
-    #     return { **d, **{
-    #         "recipe": self.recipe.as_dict(),
-    #         "results": [r.as_dict() for r in self.results],
-    #         "reaction_library": rlib,
-    #     }}
+    metadata: dict = None
 
 def compress_doc(result_doc: RxnCAResultDoc, num_steps=100):
     results = result_doc.results
     compressed = [compress_result(r, num_steps) for r in results]
-    return RxnCAResultDoc(recipe=result_doc.recipe, results=compressed, phases=result_doc.phases, reaction_library=result_doc.reaction_library)
+    return RxnCAResultDoc(recipe=result_doc.recipe,
+                          results=compressed,
+                          phases=result_doc.phases,
+                          reaction_library=result_doc.reaction_library,
+                          metadata=result_doc.metadata)
+
+def get_metadata_from_results(results: List[ReactionResult]):
+    return {
+        "rxn_choices": [assemble_rxn_choices(r) for r in results]
+    }
+
+def assemble_rxn_choices(result: ReactionResult):
+    choices = []
+    for step in result.steps():
+        rxn_choice = step.get_general_state(REACTION_CHOSEN)
+        if rxn_choice != None:
+            choices.append(rxn_choice)
+    return choices

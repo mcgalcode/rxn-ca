@@ -149,7 +149,7 @@ class ScoredReaction:
         return self._reactants[phase]
 
     def reactant_stoich_fraction(self, phase: str) -> Number:
-        """Returns the stoichiometry in this reaction for the desired product phase.
+        """Returns the stoichiometry in this reaction for the desired reactant phase.
 
         Args:
             phase (str): The phase whose stoichiometry is desired

@@ -12,7 +12,7 @@ from pylattica.core.basic_controller import BasicController
 
 from ..phases.solid_phase_set import SolidPhaseSet
 from .reaction_result import ReactionResult
-from .constants import VOLUME
+from .constants import VOLUME, REACTION_CHOSEN
 from ..reactions import ScoredReactionSet
 from .reaction_calculator import ReactionCalculator
 
@@ -50,6 +50,9 @@ class LiquidSwapController(BasicController):
         site_state = prev_state.get_site_state(site_id)
         species = site_state[DISCRETE_OCCUPANCY]
         updates = {}
+        updates[GENERAL] = {
+            REACTION_CHOSEN: None
+        }
 
         if species == SolidPhaseSet.FREE_SPACE:
             return updates

@@ -2,7 +2,7 @@
 
 from rxn_ca.core.recipe import ReactionRecipe
 from rxn_ca.reactions import ReactionLibrary
-from rxn_ca.computing.schemas.ca_result_schema import compress_doc
+from rxn_ca.computing.schemas.ca_result_schema import compress_doc, get_metadata_from_results
 
 from rxn_ca.utilities.single_sim import run_single_sim
 from rxn_ca.utilities.parallel_sim import run_sim_parallel
@@ -72,7 +72,7 @@ else:
     initial_simulation = None
 
 if args.single:
-    result = run_single_sim(
+    result_doc = run_single_sim(
         recipe,
         base_reactions=reaction_set,
         reaction_lib=rxn_lib,
@@ -80,7 +80,7 @@ if args.single:
         phase_set = phases
     )
 else:
-    result = run_sim_parallel(
+    result_doc = run_sim_parallel(
         recipe,
         base_reactions=reaction_set,
         reaction_lib=rxn_lib,
@@ -88,13 +88,15 @@ else:
         phase_set = phases
     )
 
-print(f'================= SAVING RESULTS to {output_file} =================')
+print("Assembling metadata from results...")
+result_doc.metadata = get_metadata_from_results(result_doc.results)
 
+print(f'================= SAVING RESULTS to {output_file} =================')
 
 if args.compress:
     print("Compressing result...")
     compressed_fpath = output_file.split(".")[0] + "_compressed.json"
-    compressed = compress_doc(result, num_steps=500)
+    compressed = compress_doc(result_doc, num_steps=500)
     if not store_lib:
         print("Discarding reaction library...")
         compressed.reaction_library = None
@@ -102,5 +104,5 @@ if args.compress:
     compressed.to_file(compressed_fpath)
 else:
     print(f"Saving original results to {output_file}...")
-    result.to_file(output_file)
+    result_doc.to_file(output_file)
 
