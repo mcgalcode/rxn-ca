@@ -79,11 +79,10 @@ class ReactionStepAnalyzer():
     def get_all_absolute_phase_volumes(self):
         phase_amts = {}
         for step in self.steps:
-            vol_multiplier = step.get_general_state().get(VOL_MULTIPLIER, 1.0)
             for site in step.all_site_states():
                 phase = site[DISCRETE_OCCUPANCY]
                 if phase != SolidPhaseSet.FREE_SPACE:
-                    vol = site[VOLUME] * vol_multiplier
+                    vol = site[VOLUME]
                     if phase in phase_amts:
                         phase_amts[phase] += vol
                     else:
@@ -99,6 +98,29 @@ class ReactionStepAnalyzer():
                     
 
         return phase_amts
+    
+    def get_total_volume(self):
+        vol = 0
+        for step in self.steps:
+            for site in step.all_site_states():
+                vol += site[VOLUME]        
+        return vol
+    
+    def get_total_mass(self):
+        vol = 0
+        for step in self.steps:
+            for site in step.all_site_states():
+                vol += site[VOLUME] * self.phase_set.get_density(site[DISCRETE_OCCUPANCY])       
+        return vol
+    
+    def get_avg_volume(self):
+        avg_vols = []
+        for step in self.steps:
+            step_vol = 0
+            for site in step.all_site_states():
+                step_vol += site[VOLUME]    
+            avg_vols.append(step_vol/len(step.all_site_states()))
+        return sum(avg_vols) / len(avg_vols)
 
     def get_all_absolute_phase_masses(self):
         vols = self.get_all_absolute_phase_volumes()

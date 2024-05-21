@@ -4,6 +4,7 @@ from numbers import Number
 
 from rxn_network.reactions.basic import BasicReaction
 from ..phases.gasses import DEFAULT_GASES
+from ..phases import SolidPhaseSet
 
 def stoich_map_to_str(stoich_map: typing.Dict[str, Number]) -> str:
     """Generates a string that encapsulates a stoichiometry map. For example
@@ -203,6 +204,12 @@ class ScoredReaction:
         """
         ratio = self._products[product] / self._reactants[reactant]
         return reactant_vol * self.solid_product_reactant_stoich_ratio
+    
+    def convert_to_moles(self, phase_set: SolidPhaseSet):
+        reactants_moles = phase_set.vol_amts_to_moles(self._reactants)
+        products = phase_set.vol_amts_to_moles(self._products)
+
+        return ScoredReaction(reactants_moles, products, competitiveness=self.competitiveness, energy_per_atom=self.energy_per_atom)
 
     def any_reactants(self, phases):
         return len(self.reactants.intersection(phases)) > 0

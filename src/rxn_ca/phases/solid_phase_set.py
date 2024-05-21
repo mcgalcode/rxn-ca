@@ -77,14 +77,19 @@ class SolidPhaseSet(PhaseSet):
             _description_
         """
         phase_names = [e.composition.reduced_formula for e in entry_set.entries_list]
-
+        print("Retrieving entry volumes...")
         volumes, densities = get_densities_and_vols_from_entry_set(entry_set)
+        print("Retrieving entry obs....")
         exp_obs = get_exp_observ(entry_set)
-        melting_points = get_melting_points(phase_names)
+        print("Retrieving entry mps...")
+
+        known_mps = process_composition_dict(entry_metadata.get("melting_points", {}))
+        remaining = list(set(phase_names) - set(known_mps.keys()))
+        melting_points = get_melting_points(remaining)
         
         volumes = { **volumes, **process_composition_dict(entry_metadata.get("volumes", {})) }
         densities = { **densities, **process_composition_dict(entry_metadata.get("densities", {})) }
-        melting_points = { **melting_points, **process_composition_dict(entry_metadata.get("melting_points", {})) }
+        melting_points = { **melting_points, **known_mps }
         exp_obs = { **exp_obs, **process_composition_dict(entry_metadata.get("experimentally_observed", {})) }
 
         return cls(
@@ -471,6 +476,7 @@ def get_melting_points(phases: List[str]) -> Dict[str, float]:
             unknown_phases.append(p)
     
     if len(unknown_phases) > 0:
+        print(f"Couldn't find {len(unknown_phases)} in mem... Using API for retrieval.")
         predicted = predict_melting_points_api(unknown_phases)
         mps = { **mps, **predicted }
 

@@ -18,7 +18,7 @@ class ReactionPlotter():
     was used in the simulation.
     """
 
-    UNFOCUS_COLOR = "rgb(220,220,220)"
+    UNFOCUS_COLOR = "rgb(240,240,240)"
     
     def __init__(self,
                  bulk_analyzer: BulkReactionAnalyzer,
@@ -52,7 +52,7 @@ class ReactionPlotter():
             y=heating_ys,
             mode='lines',
             yaxis='y2',
-            line = dict(color='crimson', width=4, dash='dash')
+            line = dict(color='crimson', width=3, dash='dash')
         )
     
     def _get_plotly_trace(self):
@@ -106,20 +106,32 @@ class ReactionPlotter():
 
         fig.layout.xaxis.update(autorange=False, range=(0, self.bulk_analyzer.last_loaded_step_idx))
 
+
+        bg_phase_traces = []
+        focus_traces = []
+
         for t in phase_traces:
             plotly_trace = self._get_plotly_phase_trace(t)
             if plotting_kwargs.get("focus_phases") is not None and t.name not in plotting_kwargs.get("focus_phases"):
                 plotly_trace.line.update(color=ReactionPlotter.UNFOCUS_COLOR)
+                bg_phase_traces.append((t, plotly_trace))
             
-            if plotting_kwargs.get("focus_chemsys") is not None:
+            elif plotting_kwargs.get("focus_chemsys") is not None:
                 els = [str(el) for el in Composition(t.name).elements]
                 desired = set(plotting_kwargs.get("focus_chemsys").split("-"))
                 if not desired.issuperset(els):
                     plotly_trace.line.update(color=ReactionPlotter.UNFOCUS_COLOR)
+                    bg_phase_traces.append((t, plotly_trace))
 
+            else:
+                focus_traces.append((t, plotly_trace))
+        
+        for tr in focus_traces + bg_phase_traces:
+            phase_trace = tr[0]
+            plotly_trace = tr[1]
             fig.add_trace(plotly_trace)
             if self.rip_config is not None:
-                rip_trace = self._get_rip_trace(t, fig.data[-1])
+                rip_trace = self._get_rip_trace(phase_trace, fig.data[-1])
                 fig.add_trace(rip_trace)
         
         if self.include_heating_trace:
@@ -135,6 +147,7 @@ class ReactionPlotter():
                    matter_phases: List[MatterPhase] = None,
                    **plotting_kwargs) -> None:
         phase_traces = self.trace_calculator.get_general_traces(self.trace_config, quantity, mode, matter_phases=matter_phases)
+        print(len(phase_traces))
         fig = self._get_basic_phase_trace_fig(
             title,
             ylabel,

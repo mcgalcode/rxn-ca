@@ -97,15 +97,25 @@ class BulkReactionAnalyzer():
             all_phases.update(sg)
         return list(all_phases)
     
-    def phases_with_prevalence(self, prevalence):
+    def phases_with_prevalence(self, min_prevalence, max_prevalence=1.0):
         analyses = [self.get_analyzer(sg).get_all_mass_fractions() for sg in self.loaded_step_groups]
-        all_phases = set()
         
+        phases_over_min = set()
+        phases_with_excess = set()
+
         for a in analyses:
             for p, v in a.items():
-                if v > prevalence:
-                    all_phases.add(p)
-        return list(all_phases)
+                if v > min_prevalence:
+                    phases_over_min.add(p)
+                if v > max_prevalence:
+                    phases_with_excess.add(p)
+        return list(phases_over_min - phases_with_excess)
+
+    def get_volume_trace(self):
+        return [self.get_analyzer(sg).get_total_volume() for sg in self.loaded_step_groups]
+
+    def get_condensed_mass_trace(self):
+        return [self.get_analyzer(sg).get_total_mass() for sg in self.loaded_step_groups]
 
     def _get_step_groups(self) -> Tuple[List[int], List]:
         if self._step_idxs is None:

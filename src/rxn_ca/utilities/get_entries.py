@@ -9,6 +9,7 @@ def get_entries(chem_sys: str,
                 stability_cutoff: float = 0.1,
                 ensure_phases: List[str] = [],
                 custom_entries: List = [],
+                thermo_types: List[str] = ["GGA_GGA+U"],
                 **kwargs) -> GibbsEntrySet:
     # Note: custom entries should be retrieved from MP using the
     # additional_criteria={"thermo_types": ["GGA_GGA+U"]} option
@@ -16,7 +17,7 @@ def get_entries(chem_sys: str,
     with MPRester() as mpr:
         mp_computed_struct_entries = mpr.get_entries_in_chemsys(
             elements=chem_sys,
-            additional_criteria={"thermo_types": ["GGA_GGA+U"]},
+            additional_criteria={"thermo_types": thermo_types},
         )
         
     all_entries = [*custom_entries, *mp_computed_struct_entries]

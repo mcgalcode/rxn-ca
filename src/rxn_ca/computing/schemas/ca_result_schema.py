@@ -37,6 +37,5 @@ def assemble_rxn_choices(result: ReactionResult):
     choices = []
     for step in result.steps():
         rxn_choice = step.get_general_state(REACTION_CHOSEN)
-        if rxn_choice != None:
-            choices.append(rxn_choice)
+        choices.append(rxn_choice)
     return choices
