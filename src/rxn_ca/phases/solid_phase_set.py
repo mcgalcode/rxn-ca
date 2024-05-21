@@ -52,13 +52,15 @@ class SolidPhaseSet(PhaseSet):
             densities=set_dict["densities"],
             melting_points=set_dict["melting_points"],
             experimentally_observed=set_dict["experimentally_observed"],
+            phase_metadata=set_dict["phase_metadata"],
         )
    
     @classmethod
     def from_entry_set(cls,
                        entry_set: GibbsEntrySet,
                        entry_metadata: Dict = {},
-                       gas_phases: List[str] = DEFAULT_GASES):
+                       gas_phases: List[str] = DEFAULT_GASES,
+                       phase_metadata: Dict = None):
         """Constructs a SolidPhaseSet from an EntrySet object. Expects the entry
         set itself and allows direct specification of the metadata for those entries
         along side it (metadata being whether or not that entry is experimentally observed,
@@ -98,26 +100,29 @@ class SolidPhaseSet(PhaseSet):
             volumes=volumes,
             melting_points=melting_points,
             experimentally_observed=exp_obs,
-            densities=densities
+            densities=densities,
+            phase_metadata=phase_metadata
         )
     
     @classmethod
-    def from_phase_list(cls, solid_phases: List[str], entry_metadata: Dict = {}, gas_phases: List[str] = DEFAULT_GASES):
+    def from_phase_list(cls, solid_phases: List[str], entry_metadata: Dict = {}, gas_phases: List[str] = DEFAULT_GASES, phase_metadata: Dict = None):
         entry_set = get_entry_set_from_phase_list(solid_phases)
-        return cls.from_entry_set(entry_set, entry_metadata=entry_metadata, gas_phases=gas_phases)
+        return cls.from_entry_set(entry_set, entry_metadata=entry_metadata, gas_phases=gas_phases, phase_metadata=phase_metadata)
 
     def __init__(self, phases: List[str],
                        volumes: Dict[str, float],
                        gas_phases: List[str] = DEFAULT_GASES,
                        densities: Dict[str, float] = None,
                        melting_points: Dict[str, float] = None,
-                       experimentally_observed: Dict[str, bool] = None):
+                       experimentally_observed: Dict[str, bool] = None,
+                       phase_metadata: Dict = None):
         phases = process_composition_list(list(set(phases)))
         self.gas_phases: List[str] = process_composition_list(gas_phases)
         self.volumes: Dict[str, float] = process_composition_dict(volumes)
         self.melting_points: Dict[str, float] = process_composition_dict(melting_points)
         self.experimentally_observed: Dict[str, bool] = process_composition_dict(experimentally_observed)
         self.densities: Dict[str, float] = process_composition_dict(densities)
+        self.phase_metadata = phase_metadata
         super().__init__(phases)
 
     def get_vol(self, phase: str) -> float:
@@ -337,7 +342,8 @@ class SolidPhaseSet(PhaseSet):
             "gas_phases": self.gas_phases,
             "densities": self.densities,
             "melting_points": self.melting_points,
-            "experimentally_observed": self.experimentally_observed
+            "experimentally_observed": self.experimentally_observed,
+            "phase_metadata": self.phase_metadata
         }
     
     def __iter__(self):
