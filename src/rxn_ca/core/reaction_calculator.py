@@ -129,23 +129,35 @@ class ReactionCalculator():
         for nb_id, distance in self.neighborhood_graph.neighbors_of(site_one_id, include_weights=True):
             site_two_state = state.get_site_state(nb_id)
             site_two_phase = site_two_state[DISCRETE_OCCUPANCY]
-            # print(site_one_phase, site_two_phase)
-            possible_reactions = self.rxn_set.get_reactions([site_two_phase, site_one_phase])
+            interactions = []
 
-            if any_neighboring_free_space:
-                for spec in self.atmospheric_species:
-                    possible_reactions.extend(self.rxn_set.get_reactions([site_one_phase, site_two_phase, spec]))
+            possible_solid_solid_gas_rxns = []
+            for spec in self.atmospheric_species:
+                possible_solid_solid_gas_rxns.extend(self.rxn_set.get_reactions([site_one_phase, site_two_phase, spec]))
+
+            if len(possible_solid_solid_gas_rxns) > 0:
+                interaction_score = self.adjust_score_for_distance(possible_solid_solid_gas_rxns[0].competitiveness, distance)
+                interactions.extend([SiteInteraction(
+                    site_states=[site_one_state, site_two_state],
+                    reactions=possible_solid_solid_gas_rxns,
+                    atmosphere_reactant=None,
+                    score=interaction_score
+                )])            
+                
 
             # Case 1) A neighboring empty site - if there are any gaseous phases present, now is the time to REACT!
-            interactions = []
+
             if site_two_phase == SolidPhaseSet.FREE_SPACE:
                 interactions.extend(self.atmospheric_interactions(site_one_state))
             # Case 2) There are stoichiometrically plausible reactions between these two phases
-            elif len(possible_reactions) > 0:
-                interaction_score = self.adjust_score_for_distance(possible_reactions[0].competitiveness, distance)
+
+            possible_ss_reactions = self.rxn_set.get_reactions([site_two_phase, site_one_phase])
+
+            if len(possible_ss_reactions) > 0:
+                interaction_score = self.adjust_score_for_distance(possible_ss_reactions[0].competitiveness, distance)
                 interactions.extend([SiteInteraction(
                     site_states=[site_one_state, site_two_state],
-                    reactions=possible_reactions,
+                    reactions=possible_ss_reactions,
                     atmosphere_reactant=None,
                     score=interaction_score
                 )])
