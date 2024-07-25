@@ -206,8 +206,8 @@ class ScoredReaction:
         return reactant_vol * self.solid_product_reactant_stoich_ratio
     
     def convert_to_moles(self, phase_set: SolidPhaseSet):
-        reactants_moles = phase_set.vol_amts_to_moles(self._reactants)
-        products = phase_set.vol_amts_to_moles(self._products)
+        reactants_moles = phase_set.vol_amts_to_moles(self._reactants, should_round=3)
+        products = phase_set.vol_amts_to_moles(self._products, should_round=3)
 
         return ScoredReaction(reactants_moles, products, competitiveness=self.competitiveness, energy_per_atom=self.energy_per_atom)
 
