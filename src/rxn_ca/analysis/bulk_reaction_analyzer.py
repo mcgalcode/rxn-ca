@@ -74,6 +74,9 @@ class BulkReactionAnalyzer():
     def molar_fractional_breakdown(self, step_no):
         return self.analyze_step(step_no).get_all_absolute_molar_amounts()
     
+    def mass_fraction_breakdown(self, step_no):
+        return self.analyze_step(step_no).get_all_mass_fractions()
+    
     def get_final_molar_breakdown(self):
         return self.get_analyzer(self.get_final_steps()).get_all_mole_fractions()
 
