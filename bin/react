@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser(
                     description="Runs the rxn-ca automaton",
 )
 
-parser.add_argument('recipe_filename')
+parser.add_argument('recipe_location')
 parser.add_argument('-d', '--input-dir')
 parser.add_argument('-o', '--output-file')
 parser.add_argument('-p', '--output-dir')
@@ -33,9 +33,9 @@ parser.add_argument('--store-lib', default=False, action=argparse.BooleanOptiona
 
 args = parser.parse_args()
 
-output_file = args.output_file
+output_file_arg = args.output_file
 output_dir = args.output_dir
-recipe_filename = args.recipe_filename
+recipe_location = args.recipe_location
 reaction_library_filename = args.reaction_library_file
 initial_simulation_filename = args.initial_simulation_file
 compress = args.compress
@@ -43,19 +43,7 @@ store_lib = args.store_lib
 
 print_banner()
 
-print(f"Reading recipe from {recipe_filename}...")
-
-if output_file is None:
-    output_fname = recipe_filename.split("/")[-1]
-
-    if output_dir is None:
-        output_dir = os.path.dirname(recipe_filename)
-    
-    output_file = os.path.join(output_dir, output_fname)
-
-print(f"Choosing {output_file} as output location")
-
-recipe = ReactionRecipe.from_file(recipe_filename)
+print(recipe_location)
 
 if reaction_library_filename is not None:
     print(f"Reading reaction library from {reaction_library_filename}...")
@@ -71,38 +59,63 @@ if initial_simulation_filename is not None:
 else:
     initial_simulation = None
 
-if args.single:
-    result_doc = run_single_sim(
-        recipe,
-        base_reactions=reaction_set,
-        reaction_lib=rxn_lib,
-        initial_simulation=initial_simulation,
-        phase_set = phases
-    )
+if os.path.isdir(recipe_location):
+    recipe_filenames = [os.path.join(recipe_location, fpath) for fpath in os.listdir(recipe_location)]
+    recipe_filenames = [fpath for fpath in recipe_filenames if os.path.isfile(fpath)]
 else:
-    result_doc = run_sim_parallel(
-        recipe,
-        base_reactions=reaction_set,
-        reaction_lib=rxn_lib,
-        initial_simulation=initial_simulation,
-        phase_set = phases
-    )
+    recipe_filenames = [recipe_location]
 
-print("Assembling metadata from results...")
-result_doc.metadata = get_metadata_from_results(result_doc.results)
+print(f"Identified the following recipes: {', '.join(recipe_filenames)}")
 
-print(f'================= SAVING RESULTS to {output_file} =================')
+for recipe_filename in recipe_filenames:
+    print(f"Reading recipe from {recipe_filename}...")
+    recipe = ReactionRecipe.from_file(recipe_filename)
 
-if args.compress:
-    print("Compressing result...")
-    compressed_fpath = output_file.split(".")[0] + "_compressed.json"
-    compressed = compress_doc(result_doc, num_steps=500)
-    if not store_lib:
-        print("Discarding reaction library...")
-        compressed.reaction_library = None
-    print(f"Saving compressed results to {compressed_fpath}")
-    compressed.to_file(compressed_fpath)
-else:
-    print(f"Saving original results to {output_file}...")
-    result_doc.to_file(output_file)
+    if output_file_arg is None:
+        if recipe.name is None:
+            output_fname = recipe_filename.split("/")[-1]
+        else:
+            output_fname = f"{recipe.name}.json"
+
+        if output_dir is None:
+            output_dir = os.path.dirname(recipe_filename)
+        
+        output_file = os.path.join(output_dir, output_fname)
+
+    print(f"Choosing {output_file} as output location")
+
+    if args.single:
+        result_doc = run_single_sim(
+            recipe,
+            base_reactions=reaction_set,
+            reaction_lib=rxn_lib,
+            initial_simulation=initial_simulation,
+            phase_set = phases
+        )
+    else:
+        result_doc = run_sim_parallel(
+            recipe,
+            base_reactions=reaction_set,
+            reaction_lib=rxn_lib,
+            initial_simulation=initial_simulation,
+            phase_set = phases
+        )
+
+    print("Assembling metadata from results...")
+    result_doc.metadata = get_metadata_from_results(result_doc.results)
+
+    print(f'================= SAVING RESULTS to {output_file} =================')
+
+    if args.compress:
+        print("Compressing result...")
+        compressed_fpath = output_file.split(".")[0] + "_compressed.json"
+        compressed = compress_doc(result_doc, num_steps=500)
+        if not store_lib:
+            print("Discarding reaction library...")
+            compressed.reaction_library = None
+        print(f"Saving compressed results to {compressed_fpath}")
+        compressed.to_file(compressed_fpath)
+    else:
+        print(f"Saving original results to {output_file}...")
+        result_doc.to_file(output_file)
 
