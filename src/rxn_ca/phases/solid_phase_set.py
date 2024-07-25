@@ -52,7 +52,7 @@ class SolidPhaseSet(PhaseSet):
             densities=set_dict["densities"],
             melting_points=set_dict["melting_points"],
             experimentally_observed=set_dict["experimentally_observed"],
-            phase_metadata=set_dict["phase_metadata"],
+            phase_metadata=set_dict.get("phase_metadata"),
         )
    
     @classmethod
