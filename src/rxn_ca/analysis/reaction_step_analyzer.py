@@ -58,16 +58,16 @@ class ReactionStepAnalyzer():
             values = normalize_dict(values)
 
         if include_matter_phases is not None:
-
+            acceptable = [m.value for m in include_matter_phases]
             to_exclude = []
             for p in values.keys():
-                if self.phase_set.get_matter_phase(p, temperature) not in include_matter_phases:
+                mphase = self.phase_set.get_matter_phase(p, temperature).value
+                if mphase not in acceptable:
                     to_exclude.append(p)
 
             for e in to_exclude:
                 del values[e]
 
-        
         if phases is not None:
             return { k: v for k, v in values.items() if k in phases}
         elif phase is not None:
