@@ -40,6 +40,7 @@ class ReactionRecipe(MSONable):
     exact_phase_set: List[str] = None
     atmospheric_phases: List[str] = field(default_factory=list)
     packing_fraction: float = 1.0
+    name: str = None
     
     def __post_init__(self):
         self.reactant_amounts = process_composition_dict(self.reactant_amounts)
