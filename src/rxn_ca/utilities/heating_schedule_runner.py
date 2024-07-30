@@ -2,7 +2,7 @@ from ..core.reaction_result import ReactionResult
 from ..core.reaction_controller import ReactionController
 from ..core.reaction_calculator import ReactionCalculator
 from ..core.heating import HeatingSchedule, RegrindStep, HeatingStep
-from ..core.constants import GASES_EVOLVED, GASES_CONSUMED, MELTED_AMTS
+from ..core.constants import GASES_EVOLVED, GASES_CONSUMED, MELTED_AMTS, TEMPERATURE
 from ..reactions.reaction_library import ReactionLibrary
 from ..core.melt_and_regrind import melt_and_regrind
 from ..analysis.reaction_step_analyzer import ReactionStepAnalyzer
@@ -25,7 +25,7 @@ class HeatingScheduleRunner():
                 controller: BasicController,
                 verbose=True):
         runner = AsynchronousRunner()       
-        results = []
+        results: List[ReactionResult] = []
 
         starting_state = simulation.state
 
@@ -59,9 +59,11 @@ class HeatingScheduleRunner():
                     reground_state = None
                 if len(results) > 0:
                     starting_state = results[-1].output
-
                     for middleware in self._middlewares:
                         starting_state = middleware(starting_state, reaction_lib.phases, step.temperature)
+
+                print("Setting temperature state")
+                starting_state.set_general_state({TEMPERATURE: step.temperature })
 
                 result = runner.run(
                     starting_state,
