@@ -81,6 +81,8 @@ for recipe_filename in recipe_filenames:
             output_dir = os.path.dirname(recipe_filename)
         
         output_file = os.path.join(output_dir, output_fname)
+    else:
+        output_file = output_file_arg
 
     print(f"Choosing {output_file} as output location")
 
