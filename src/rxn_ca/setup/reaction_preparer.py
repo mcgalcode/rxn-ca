@@ -30,11 +30,15 @@ class ReactionPreparer():
     def prepare_reaction(self, 
                          phase_mol_ratios: Dict[str, float],
                          size: int = 15,
-                         volume_multiplier: float = 1.0
+                         volume_multiplier: float = 1.0,
+                         buffer: int = 1,
         ) -> Simulation:
 
         total_vol = size ** self.dim
-        vol_per_nuc_site = 5
+        if buffer is not None:
+            vol_per_nuc_site = buffer ** 3
+        else:
+            vol_per_nuc_site = 1
         num_sites = int(total_vol / vol_per_nuc_site) / 4
 
         print(f'Nucleating grains at {num_sites} sites')
@@ -56,12 +60,13 @@ class ReactionPreparer():
             nb_spec = PseudoHexagonalNeighborhoodBuilder3D()
 
         setup = DiscreteGridSetup(self.phase_set, dim=self.dim)
+        print(num_sites, total_vol_available)
         simulation = setup.setup_random_sites(
             size,
             num_sites_desired=num_sites,
             background_spec=self.phase_set.FREE_SPACE,
             nuc_amts=normalized_vol_ratios,
-            buffer = 1,
+            buffer = buffer,
         )
 
         discrete_analzyer = DiscreteStepAnalyzer()
@@ -99,7 +104,7 @@ class ReactionPreparer():
             empty_count = discrete_analzyer.cell_count(simulation.state, self.phase_set.FREE_SPACE)
 
         assert simulation.state.get_general_state().get(VOL_MULTIPLIER) == volume_multiplier
-        print(f"Simulation is filled! Total volume is {rxn_step_analyzer.get_total_volume(simulation.state)}")
+        print(f"Simulation is filled! Total volume is {rxn_step_analyzer.set_step_group(simulation.state).get_total_volume()}")
 
         # At this stage, we check to see how close we are
         # if we are not close, we randomly adjust cells to get closer to the 
@@ -125,7 +130,7 @@ class ReactionPreparer():
         def _assess_convergence(analyzer, simulation):
     
             print("Assessing convergence using volumes...")
-            actual = analyzer.get_all_absolute_phase_volumes(simulation.state, include_melted=False)
+            actual = analyzer.set_step_group(simulation.state).get_all_absolute_phase_volumes()
             ideal = desired_phase_vols
 
             close = _check_closeness(ideal, actual)
