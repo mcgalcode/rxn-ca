@@ -34,18 +34,17 @@ Before running a reaction, you must specify the recipe that will run it. Here's 
 from rxn_ca.core.recipe import ReactionRecipe
 from rxn_ca.core.heating import HeatingSchedule, HeatingStep
 
-heating_schedule = HeatingSchedule(
-    HeatingStep.sweep(600, 1100, stage_length=30000, step_size=100),
+heating_schedule = HeatingSchedule([
+    HeatingStep.sweep(600, 1100, stage_length=30000, temp_step_size=100),
     HeatingStep.hold(1100, 60000),    
-)
+])
 
 recipe = ReactionRecipe(
-    chem_sys="Ba-Ti-O-S-Na",
+    heating_schedule=heating_schedule,
     reactant_amounts={
         "BaS": 1,
         "Na2TiO3": 1,
     },
-    heating_schedule=heating_schedule
 )
 
 recipe.to_file("BaS_Na2TiO3_recipe.json")
