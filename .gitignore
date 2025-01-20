@@ -2,6 +2,8 @@ rxn_ca/__pycache__
 .DS_Store
 **/__pycache__
 
+guides/*.json
+
 .vscode
 
 # Byte-compiled / optimized / DLL files

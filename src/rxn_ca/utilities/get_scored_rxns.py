@@ -4,8 +4,7 @@ from ..core import HeatingSchedule
 from ..phases import SolidPhaseSet
 
 from ..reactions import ReactionLibrary, ScoredReaction, ScoredReactionSet, score_rxns
-from ..reactions.scorers import BasicScore, TammanHuttigScoreErf
-from tqdm import tqdm
+from ..reactions.scorers import BasicScore, TammanScore
 
 from typing import List
 
@@ -31,7 +30,7 @@ def fn(temp):
 def get_scored_rxns(rxn_set: ReactionSet,
                     heating_sched: HeatingSchedule = None,
                     temps: List = None,
-                    scorer_class: BasicScore = TammanHuttigScoreErf,
+                    scorer_class: BasicScore = TammanScore,
                     phase_set: SolidPhaseSet = None,
                     rxns_at_temps = None,
                     parallel=True):
