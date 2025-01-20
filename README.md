@@ -10,5 +10,7 @@ To install this library, run the following command from inside this repository a
 >>> pip install -e .
 ```
 
-## Getting Started
+## Basic Usage
+
+To view the basic usage for this library, please consult the `guides/basic_usage.ipynb` python notebook. More detailed documentation is in progress.
 
