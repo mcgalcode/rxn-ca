@@ -48,7 +48,6 @@ class PhaseTraceCalculator():
         
         traces = []
 
-
         for phase in phases_to_plot:
             ys = np.array([a.get(phase, 0) for a in step_analyses])
 

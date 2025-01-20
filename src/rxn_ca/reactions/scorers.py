@@ -108,6 +108,12 @@ class TammanHuttigScoreErf(BasicScore):
             # Tamman
             return tamman_score_softplus(self.temp / min_mp) * delta_g_adjustment
 
+class GibbsErfScore(BasicScore):
+    # https://en.wikipedia.org/wiki/Tammann_and_H%C3%BCttig_temperatures
+
+    def score(self, rxn: ComputedReaction):
+        return erf(rxn.energy_per_atom)
+
 class TammanScore(BasicScore):
     # https://en.wikipedia.org/wiki/Tammann_and_H%C3%BCttig_temperatures
 

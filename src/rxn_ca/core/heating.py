@@ -12,7 +12,7 @@ class HeatingStep(RecipeStep):
     """
 
     @classmethod
-    def hold(cls, temperature, duration, stage_length = 1):
+    def hold(cls, temperature, duration = 1, stage_length = 1):
         return [cls(stage_length, temperature) for _ in range(duration)]
     
     @classmethod

@@ -36,6 +36,7 @@ class BulkReactionAnalyzer():
         """
         self.step_analyzer = ReactionStepAnalyzer(phase_set)
         self.heating_schedule = heating_sched
+        self.phase_set = phase_set
 
         self.result_length = len(results[0])
         self.results = results
@@ -58,7 +59,7 @@ class BulkReactionAnalyzer():
     def loaded_step_groups(self):
         self._get_step_groups()
         return self._step_groups
-    
+      
     def get_analyzer(self, step_group):
         return self.step_analyzer.set_step_group(step_group)
     
@@ -92,13 +93,19 @@ class BulkReactionAnalyzer():
     def get_first_steps(self):
         return [r.first_step for r in self.results]
 
-    def all_phases_present(self):
-        sgs = [self.get_analyzer(sg).phases_present() for sg in self.loaded_step_groups]
-
+    def all_phases_present(self, min_mass_fraction_prevalence=0.0):
+        analyses = [self.get_analyzer(sg).get_all_mass_fractions() for sg in self.loaded_step_groups]
         all_phases = set()
-        for sg in sgs:
-            all_phases.update(sg)
-        return list(all_phases)
+
+        for analysis in analyses:
+            for phase,amt in analysis.items():
+                if amt > min_mass_fraction_prevalence:
+                    all_phases.add(phase)
+        return all_phases
+
+
+    def num_phases_present(self, min_mass_fraction_prevalence=0.0):
+        return len(self.all_phases_present(min_mass_fraction_prevalence))
     
     def phases_with_prevalence(self, min_prevalence, max_prevalence=1.0):
         analyses = [self.get_analyzer(sg).get_all_mass_fractions() for sg in self.loaded_step_groups]
