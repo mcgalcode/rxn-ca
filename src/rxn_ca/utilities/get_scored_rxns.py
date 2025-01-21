@@ -33,6 +33,7 @@ def get_scored_rxns(rxn_set: ReactionSet,
                     scorer_class: BasicScore = TammanScore,
                     phase_set: SolidPhaseSet = None,
                     rxns_at_temps = None,
+                    scorer_kwargs: dict = {},
                     parallel=True):
 
     lib = ReactionLibrary(phases=phase_set)
@@ -63,7 +64,7 @@ def get_scored_rxns(rxn_set: ReactionSet,
             rxns_at_temps = rxn_set.compute_at_temperatures(temps)
         
         for t in temps:
-            scorer = scorer_class(temp=t, phase_set=phase_set)
+            scorer = scorer_class(temp=t, phase_set=phase_set, **scorer_kwargs)
             rset = rxns_at_temps.get(t)
 
             scored_rxns: List[ScoredReaction] = score_rxns(rset, scorer, phase_set=phase_set)
