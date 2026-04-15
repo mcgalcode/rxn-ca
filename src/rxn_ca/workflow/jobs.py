@@ -20,6 +20,7 @@ def _build_reaction_library(
     ensure_phases: List[str] = None,
     metastability_cutoff: float = 0.1,
     exclude_theoretical: bool = True,
+    **entry_kwargs
 ) -> tuple:
     """Build phase set and reaction library for a chemical system.
 
@@ -46,6 +47,7 @@ def _build_reaction_library(
         metastability_cutoff=metastability_cutoff,
         ensure_phases=ensure_phases or [],
         exclude_theoretical_phases=exclude_theoretical,
+        **entry_kwargs
     )
     print(f"Got {len(entries)} entries for {chemical_system}")
     if ensure_phases:
@@ -82,6 +84,7 @@ def setup_reaction_library(
     metastability_cutoff: float = 0.1,
     exclude_theoretical: bool = True,
     save_to_file: bool = True,
+    **entry_kwargs
 ) -> ReactionLibraryData:
     """Set up phase set and reaction library for a chemical system.
 
@@ -109,6 +112,7 @@ def setup_reaction_library(
         ensure_phases,
         metastability_cutoff,
         exclude_theoretical,
+        **entry_kwargs
     )
 
     # Optionally save reaction library to file
