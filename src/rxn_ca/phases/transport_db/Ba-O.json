@@ -1,0 +1,222 @@
+[
+  {
+    "L_tensor": [
+      [
+        -586000000000.0,
+        0.0
+      ],
+      [
+        0.0,
+        -522000000000.0
+      ]
+    ],
+    "L_tensor_dis": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "L_tensor_self": [
+      [
+        -586000000000.0,
+        0.0
+      ],
+      [
+        0.0,
+        -522000000000.0
+      ]
+    ],
+    "mapping": {
+      "Ba": 0,
+      "O": 1
+    },
+    "metadata": "CHGNet_R2SCAN_spin_MatPESStaticSet",
+    "reduced_formula": "BaO",
+    "species": [
+      "Ba",
+      "O"
+    ],
+    "temperature": 750.0,
+    "volume": null
+  },
+  {
+    "L_tensor": [
+      [
+        521000000000.0,
+        0.0
+      ],
+      [
+        0.0,
+        567000000000.0
+      ]
+    ],
+    "L_tensor_dis": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "L_tensor_self": [
+      [
+        521000000000.0,
+        0.0
+      ],
+      [
+        0.0,
+        567000000000.0
+      ]
+    ],
+    "mapping": {
+      "Ba": 0,
+      "O": 1
+    },
+    "metadata": "CHGNet_R2SCAN_spin_MatPESStaticSet",
+    "reduced_formula": "BaO",
+    "species": [
+      "Ba",
+      "O"
+    ],
+    "temperature": 1000.0,
+    "volume": null
+  },
+  {
+    "L_tensor": [
+      [
+        495000000000.0,
+        0.0
+      ],
+      [
+        0.0,
+        1130000000000.0
+      ]
+    ],
+    "L_tensor_dis": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "L_tensor_self": [
+      [
+        495000000000.0,
+        0.0
+      ],
+      [
+        0.0,
+        1130000000000.0
+      ]
+    ],
+    "mapping": {
+      "Ba": 0,
+      "O": 1
+    },
+    "metadata": "CHGNet_R2SCAN_spin_MatPESStaticSet",
+    "reduced_formula": "BaO",
+    "species": [
+      "Ba",
+      "O"
+    ],
+    "temperature": 1250.0,
+    "volume": null
+  },
+  {
+    "L_tensor": [
+      [
+        931000000000000.0,
+        0.0
+      ],
+      [
+        0.0,
+        2080000000000000.0
+      ]
+    ],
+    "L_tensor_dis": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "L_tensor_self": [
+      [
+        931000000000000.0,
+        0.0
+      ],
+      [
+        0.0,
+        2080000000000000.0
+      ]
+    ],
+    "mapping": {
+      "Ba": 0,
+      "O": 1
+    },
+    "metadata": "CHGNet_R2SCAN_spin_MatPESStaticSet",
+    "reduced_formula": "BaO",
+    "species": [
+      "Ba",
+      "O"
+    ],
+    "temperature": 1500.0,
+    "volume": null
+  },
+  {
+    "L_tensor": [
+      [
+        3600000000000000.0,
+        0.0
+      ],
+      [
+        0.0,
+        7210000000000000.0
+      ]
+    ],
+    "L_tensor_dis": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "L_tensor_self": [
+      [
+        3600000000000000.0,
+        0.0
+      ],
+      [
+        0.0,
+        7210000000000000.0
+      ]
+    ],
+    "mapping": {
+      "Ba": 0,
+      "O": 1
+    },
+    "metadata": "CHGNet_R2SCAN_spin_MatPESStaticSet",
+    "reduced_formula": "BaO",
+    "species": [
+      "Ba",
+      "O"
+    ],
+    "temperature": 1750.0,
+    "volume": null
+  }
+]
