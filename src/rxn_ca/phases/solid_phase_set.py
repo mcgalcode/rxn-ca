@@ -24,12 +24,7 @@ from ..utilities.helpers import normalize_dict, add_values_to_dict_by_addition
 
 from pymatgen.core.composition import Composition
 
-# Phase labels that are not parseable as pymatgen compositions (e.g. free volume).
-_NON_COMPOSITION_PHASES = frozenset({"Free Space", "Free"})
-
 def process_composition(comp_str):
-    if comp_str in _NON_COMPOSITION_PHASES:
-        return comp_str
     return Composition(comp_str).reduced_formula
 
 def process_composition_list(comp_list):
@@ -53,10 +48,10 @@ class SolidPhaseSet(PhaseSet):
         return cls(
             phases=set_dict["phases"],
             volumes=set_dict["volumes"],
-            gas_phases=set_dict.get("gas_phases", DEFAULT_GASES),
-            densities=set_dict.get("densities"),
-            melting_points=set_dict.get("melting_points"),
-            experimentally_observed=set_dict.get("experimentally_observed"),
+            gas_phases=set_dict["gas_phases"],
+            densities=set_dict["densities"],
+            melting_points=set_dict["melting_points"],
+            experimentally_observed=set_dict["experimentally_observed"],
             phase_metadata=set_dict.get("phase_metadata"),
         )
    
@@ -121,12 +116,6 @@ class SolidPhaseSet(PhaseSet):
                        melting_points: Dict[str, float] = None,
                        experimentally_observed: Dict[str, bool] = None,
                        phase_metadata: Dict = None):
-        if densities is None:
-            densities = {}
-        if melting_points is None:
-            melting_points = {}
-        if experimentally_observed is None:
-            experimentally_observed = {}
         phases = process_composition_list(list(set(phases)))
         self.gas_phases: List[str] = process_composition_list(gas_phases)
         self.volumes: Dict[str, float] = process_composition_dict(volumes)
