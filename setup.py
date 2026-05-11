@@ -34,7 +34,6 @@ setup(
         'numpy >= 1.21.5',
         'matplotlib >= 3.5.1',
         'tqdm >= 4.63.0',
-        'executing',
         'reaction-network@git+https://github.com/mcgalcode/reaction-network',
         'pymatgen >= 2022.3.29',
         'plotly >= 5.6.0',
