@@ -4,7 +4,7 @@ from ..core import HeatingSchedule
 from ..phases import SolidPhaseSet
 
 from ..reactions import ReactionLibrary, ScoredReaction, ScoredReactionSet, score_rxns
-from ..reactions.scorers import BasicScore, TammanScore
+from ..reactions.scorers.core import BasicScore, TammanScore
 
 from typing import List
 

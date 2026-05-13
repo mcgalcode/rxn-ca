@@ -20,7 +20,13 @@ setup(
     license="modified BSD",
     packages=find_packages("src"),
     package_dir={"": "src"},
-    package_data={"rxn-ca": ["py.typed"]},
+    package_data={
+        "rxn_ca": [
+            "py.typed",
+            "phases/*.csv",
+            "phases/transport_db/*.json",
+        ],
+    },
     scripts=["bin/react", "bin/enumerate", "bin/build-library"],
     zip_safe=False,
     include_package_data=True,
