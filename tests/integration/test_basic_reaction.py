@@ -19,8 +19,8 @@ def test_basic_reaction(get_test_file_path):
                                            heating_sched=result_doc.recipe.heating_schedule)
 
     step_analyzer = ReactionStepAnalyzer(rxn_lib.phases)
-
-    product_phases = step_analyzer.phases_present(result_analyzer.get_final_steps())
+    step_analyzer.set_step_group(result_analyzer.get_final_steps())
+    product_phases = step_analyzer.phases_present()
 
     assert "BaTiO3" in product_phases
     assert "Ba2TiO4" in product_phases
@@ -38,8 +38,8 @@ def test_parallel_rxn(get_test_file_path):
                                            heating_sched=result_doc.recipe.heating_schedule)
 
     step_analyzer = ReactionStepAnalyzer(rxn_lib.phases)
-
-    product_phases = step_analyzer.phases_present(result_analyzer.get_final_steps())
+    step_analyzer.set_step_group(result_analyzer.get_final_steps())
+    product_phases = step_analyzer.phases_present()
 
     assert "BaTiO3" in product_phases
     assert "Ba2TiO4" in product_phases

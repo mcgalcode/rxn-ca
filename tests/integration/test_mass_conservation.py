@@ -19,11 +19,13 @@ def test_basic_mass_conservation(get_test_file_path):
 
     step_analyzer = ReactionStepAnalyzer(rxn_lib.phases)
 
-    initial_el_comp = step_analyzer.get_molar_elemental_composition(result_analyzer.get_first_steps())
+    step_analyzer.set_step_group(result_analyzer.get_first_steps())
+    initial_el_comp = step_analyzer.get_molar_elemental_composition()
 
     for i in range(0,len(result_doc.results[0]), 100):
         steps = result_analyzer.get_steps(i)
-        elemental_composition = step_analyzer.get_molar_elemental_composition(steps)
+        step_analyzer.set_step_group(steps)
+        elemental_composition = step_analyzer.get_molar_elemental_composition()
         for el, amt in elemental_composition.items():
             initial_amt = initial_el_comp[el]
             fractional_deviation = np.abs(initial_amt - amt) / initial_amt
@@ -41,11 +43,13 @@ def test_parallel_mass_conservation(get_test_file_path):
 
     step_analyzer = ReactionStepAnalyzer(rxn_lib.phases)
 
-    initial_el_comp = step_analyzer.get_molar_elemental_composition(result_analyzer.get_first_steps())
+    step_analyzer.set_step_group(result_analyzer.get_first_steps())
+    initial_el_comp = step_analyzer.get_molar_elemental_composition()
 
     for i in range(0,len(result_doc.results[0]), 100):
         steps = result_analyzer.get_steps(i)
-        elemental_composition = step_analyzer.get_molar_elemental_composition(steps)
+        step_analyzer.set_step_group(steps)
+        elemental_composition = step_analyzer.get_molar_elemental_composition()
         for el, amt in elemental_composition.items():
             initial_amt = initial_el_comp[el]
             fractional_deviation = np.abs(initial_amt - amt) / initial_amt

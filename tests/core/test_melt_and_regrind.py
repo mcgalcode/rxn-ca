@@ -19,10 +19,20 @@ def phases():
             "Li2O": 1.0,
             "YMnO3": 1.0,
         },
+        densities={
+            "NaCl": 2.16,
+            "Li2O": 2.01,
+            "YMnO3": 5.15,
+        },
         melting_points={
             "NaCl": 600,
             "Li2O": 700,
             "YMnO3": 800,
+        },
+        experimentally_observed={
+            "NaCl": True,
+            "Li2O": True,
+            "YMnO3": True,
         },
     )
 

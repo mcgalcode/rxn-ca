@@ -18,5 +18,9 @@ def test_volume_scale():
     rxn_one: Simulation = setup_reaction(phases, precursor_mole_ratios=expected_mole_ratios)
     rxn_two: Simulation = setup_reaction(phases, precursor_mole_ratios=expected_mole_ratios, vol_multiplier=0.5)
 
-    assert analyzer.get_absolute_molar_amt(rxn_one.state, "BaTiO3") == analyzer.get_absolute_molar_amt(rxn_two.state, "BaTiO3") * 2
+    analyzer.set_step_group(rxn_one.state)
+    amt_one = analyzer.get_absolute_molar_amt("BaTiO3")
+    analyzer.set_step_group(rxn_two.state)
+    amt_two = analyzer.get_absolute_molar_amt("BaTiO3")
+    assert amt_one == amt_two * 2
 

@@ -27,8 +27,9 @@ def test_stoich():
     sim = setup_reaction(phases, precursor_mole_ratios=expected_molar_ratios)
 
     analyzer = ReactionStepAnalyzer(phases)
-    true_el_bdown = analyzer.get_molar_elemental_composition(sim.state)
-    true_phase_bdown = analyzer.get_all_absolute_molar_amounts(sim.state)
+    analyzer.set_step_group(sim.state)
+    true_el_bdown = analyzer.get_molar_elemental_composition()
+    true_phase_bdown = analyzer.get_all_absolute_molar_amounts()
 
     EL_TOL = 0.02
     for phase, amt in expected_elemental_bdown.items():
@@ -66,8 +67,9 @@ def test_stoich_two():
     )
 
     analyzer = ReactionStepAnalyzer(phases)
-    true_el_bdown = analyzer.get_fractional_elemental_composition(sim.state)
-    true_phase_bdown = analyzer.get_all_absolute_molar_amounts(sim.state)
+    analyzer.set_step_group(sim.state)
+    true_el_bdown = analyzer.get_fractional_elemental_composition()
+    true_phase_bdown = analyzer.get_all_absolute_molar_amounts()
 
     print(expected_elemental_bdown, true_el_bdown)
 

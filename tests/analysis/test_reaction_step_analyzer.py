@@ -121,6 +121,10 @@ def phase_set():
             NA_CL: 1.0,
             LI2_O: 2.0
         },
+        densities={
+            NA_CL: 2.16,
+            LI2_O: 2.01
+        },
         melting_points = {
             NA_CL: 100,
             LI2_O: 100
@@ -134,87 +138,100 @@ def phase_set():
 
 def test_total_volume_basic(phase_set, half_and_half_sim_step):
     analyzer = ReactionStepAnalyzer(phase_set)
-    total_vol = analyzer.get_total_volume(half_and_half_sim_step)
+    analyzer.set_step_group(half_and_half_sim_step)
+    total_vol = analyzer.get_total_volume()
 
     assert total_vol == 20
 
 def test_total_volume_with_vol_scale(phase_set, sim_step_with_vol_scale):
     analyzer = ReactionStepAnalyzer(phase_set)
-    total_vol = analyzer.get_total_volume(sim_step_with_vol_scale)
+    analyzer.set_step_group(sim_step_with_vol_scale)
+    total_vol = analyzer.get_total_volume()
 
-    assert total_vol == 20 * 0.5 # (10)    
+    assert total_vol == 20 * 0.5 # (10)
 
 def test_total_volume_with_different_cell_size(phase_set, sim_step_with_different_cell_vol):
     analyzer = ReactionStepAnalyzer(phase_set)
-    total_vol = analyzer.get_total_volume(sim_step_with_different_cell_vol)
+    analyzer.set_step_group(sim_step_with_different_cell_vol)
+    total_vol = analyzer.get_total_volume()
 
     assert np.isclose(total_vol, 20 * 0.8) # (16)
 
 def test_total_volume_with_vol_scale_and_different_cell_size(phase_set, sim_step_with_vol_scale_and_different_cell_vol):
     analyzer = ReactionStepAnalyzer(phase_set)
-    total_vol = analyzer.get_total_volume(sim_step_with_vol_scale_and_different_cell_vol)
+    analyzer.set_step_group(sim_step_with_vol_scale_and_different_cell_vol)
+    total_vol = analyzer.get_total_volume()
 
-    assert np.isclose(total_vol, 20 * 0.8 * 0.5) # (10)    
+    assert np.isclose(total_vol, 20 * 0.8 * 0.5) # (10)
 
 def test_phase_volumes(phase_set, half_and_half_sim_step):
     analyzer = ReactionStepAnalyzer(phase_set)
-    phase_vols = analyzer.get_all_absolute_phase_volumes(half_and_half_sim_step)
+    analyzer.set_step_group(half_and_half_sim_step)
+    phase_vols = analyzer.get_all_absolute_phase_volumes()
 
     assert phase_vols[NA_CL] == 10
     assert phase_vols[LI2_O] == 10
 
 def test_phase_volumes_complex(phase_set, complex_half_and_half_sim_step):
     analyzer = ReactionStepAnalyzer(phase_set)
-    phase_vols = analyzer.get_all_absolute_phase_volumes(complex_half_and_half_sim_step)
+    analyzer.set_step_group(complex_half_and_half_sim_step)
+    phase_vols = analyzer.get_all_absolute_phase_volumes()
 
     assert np.isclose(phase_vols[NA_CL], 4)
     assert np.isclose(phase_vols[LI2_O], 4)
 
 def test_phase_volume_fractions(phase_set, half_and_half_sim_step):
     analyzer = ReactionStepAnalyzer(phase_set)
-    phase_vol_fracs = analyzer.get_all_volume_fractions(half_and_half_sim_step)
+    analyzer.set_step_group(half_and_half_sim_step)
+    phase_vol_fracs = analyzer.get_all_volume_fractions()
 
     assert phase_vol_fracs[NA_CL] == 0.5
     assert phase_vol_fracs[LI2_O] == 0.5
 
 def test_phase_volume_fractions_complex(phase_set, complex_half_and_half_sim_step):
     analyzer = ReactionStepAnalyzer(phase_set)
-    phase_vol_fracs = analyzer.get_all_volume_fractions(complex_half_and_half_sim_step)
+    analyzer.set_step_group(complex_half_and_half_sim_step)
+    phase_vol_fracs = analyzer.get_all_volume_fractions()
 
     assert phase_vol_fracs[NA_CL] == 0.5
     assert phase_vol_fracs[LI2_O] == 0.5
 
 def test_molar_amounts(phase_set, half_and_half_sim_step):
     analyzer = ReactionStepAnalyzer(phase_set)
-    molar_amts = analyzer.get_all_absolute_molar_amounts(half_and_half_sim_step)
+    analyzer.set_step_group(half_and_half_sim_step)
+    molar_amts = analyzer.get_all_absolute_molar_amounts()
 
     assert molar_amts[NA_CL] == 10
     assert molar_amts[LI2_O] == 5
 
 def test_molar_amounts_complex(phase_set, complex_half_and_half_sim_step):
     analyzer = ReactionStepAnalyzer(phase_set)
-    molar_amts = analyzer.get_all_absolute_molar_amounts(complex_half_and_half_sim_step)
+    analyzer.set_step_group(complex_half_and_half_sim_step)
+    molar_amts = analyzer.get_all_absolute_molar_amounts()
 
     assert np.isclose(molar_amts[NA_CL], 4)
     assert np.isclose(molar_amts[LI2_O], 2)
 
 def test_mole_fractions(phase_set, half_and_half_sim_step):
     analyzer = ReactionStepAnalyzer(phase_set)
-    mole_fractions = analyzer.get_all_mole_fractions(half_and_half_sim_step)
+    analyzer.set_step_group(half_and_half_sim_step)
+    mole_fractions = analyzer.get_all_mole_fractions()
 
     assert mole_fractions[NA_CL] == 2 / 3
     assert mole_fractions[LI2_O] == 1 / 3
 
 def test_mole_fractions_complex(phase_set, complex_half_and_half_sim_step):
     analyzer = ReactionStepAnalyzer(phase_set)
-    mole_fractions = analyzer.get_all_mole_fractions(complex_half_and_half_sim_step)
+    analyzer.set_step_group(complex_half_and_half_sim_step)
+    mole_fractions = analyzer.get_all_mole_fractions()
 
     assert np.isclose(mole_fractions[NA_CL], 2 / 3)
     assert np.isclose(mole_fractions[LI2_O], 1 / 3)
 
 def test_molar_elemental_composition_complex(phase_set, complex_half_and_half_sim_step):
     analyzer = ReactionStepAnalyzer(phase_set)
-    elemental_amts = analyzer.get_molar_elemental_composition(complex_half_and_half_sim_step)
+    analyzer.set_step_group(complex_half_and_half_sim_step)
+    elemental_amts = analyzer.get_molar_elemental_composition()
 
     assert np.isclose(elemental_amts["Na"], 4)
     assert np.isclose(elemental_amts["Cl"], 4)
@@ -223,7 +240,8 @@ def test_molar_elemental_composition_complex(phase_set, complex_half_and_half_si
 
 def test_molar_elemental_fractions(phase_set, half_and_half_sim_step):
     analyzer = ReactionStepAnalyzer(phase_set)
-    elemental_amts = analyzer.get_fractional_elemental_composition(half_and_half_sim_step)
+    analyzer.set_step_group(half_and_half_sim_step)
+    elemental_amts = analyzer.get_fractional_elemental_composition()
 
     assert elemental_amts["Na"] == 2 / 7
     assert elemental_amts["Cl"] == 2 / 7
@@ -232,7 +250,8 @@ def test_molar_elemental_fractions(phase_set, half_and_half_sim_step):
 
 def test_molar_elemental_fractions_complex(phase_set, complex_half_and_half_sim_step):
     analyzer = ReactionStepAnalyzer(phase_set)
-    elemental_amts = analyzer.get_fractional_elemental_composition(complex_half_and_half_sim_step)
+    analyzer.set_step_group(complex_half_and_half_sim_step)
+    elemental_amts = analyzer.get_fractional_elemental_composition()
 
     assert elemental_amts["Na"] == 2 / 7
     assert elemental_amts["Cl"] == 2 / 7

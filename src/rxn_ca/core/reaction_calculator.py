@@ -47,7 +47,7 @@ class ReactionCalculator():
     def __init__(self,
         neighborhood_graph,
         scored_rxns: ScoredReactionSet = None,
-        inertia = 2.0,
+        inertia = 0.05,
         atmospheric_species = [],
     ) -> None:
         self.rxn_set = scored_rxns

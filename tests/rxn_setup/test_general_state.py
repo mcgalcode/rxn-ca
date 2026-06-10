@@ -18,6 +18,10 @@ def basic_phase_set():
             NA_CL: 2.0,
             LI2_O: 0.5
         },
+        densities={
+            NA_CL: 2.16,
+            LI2_O: 2.01
+        },
         melting_points={
             NA_CL: 800,
             LI2_O: 1000
