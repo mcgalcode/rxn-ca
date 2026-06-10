@@ -1,3 +1,11 @@
+"""
+DEPRECATED: This module is not currently used in the main simulation path.
+The MeltAndRegrindMultiRunner was never integrated into run_single_sim.
+This code is kept for historical reference but may be removed in a future version.
+"""
+
+import warnings
+
 from ..phases import SolidPhaseSet
 from ..utilities.setup_reaction import setup_reaction
 from ..analysis import ReactionStepAnalyzer
@@ -11,6 +19,14 @@ import numpy as np
 
 REGRIND_CUTOFF = 0.15
 
+def _deprecation_warning():
+    warnings.warn(
+        "melt_and_regrind is deprecated and not used in the main simulation path. "
+        "It may be removed in a future version.",
+        DeprecationWarning,
+        stacklevel=3
+    )
+
 def _print_dict(d: Dict, key_header: str, val_header: str):
     table = []
     for k, v in d.items():
@@ -18,6 +34,7 @@ def _print_dict(d: Dict, key_header: str, val_header: str):
     print(tabulate(table, headers=[key_header, val_header]))
 
 def calculate_melted_fraction(step: SimulationState, phases: SolidPhaseSet, temp: int):
+    _deprecation_warning()
     analyzer = ReactionStepAnalyzer(phases)
 
     unmelted_vol_fractions = analyzer.get_all_volume_fractions(step, include_melted=False)
@@ -30,6 +47,7 @@ def calculate_melted_fraction(step: SimulationState, phases: SolidPhaseSet, temp
     return total_melted_vol_frac
 
 def calculate_solid_ratio(step: SimulationState, phases: SolidPhaseSet, temp: int):
+    _deprecation_warning()
     analyzer = ReactionStepAnalyzer(phases)
 
     ideal_grid_vol = analyzer.get_ideal_step_volume(step)
@@ -38,6 +56,7 @@ def calculate_solid_ratio(step: SimulationState, phases: SolidPhaseSet, temp: in
     return solid_vol / ideal_grid_vol
 
 def separate_solid_and_melt(step: SimulationState, phases: SolidPhaseSet, temp: int):
+    _deprecation_warning()
     analyzer = ReactionStepAnalyzer(phases)
 
     print(f"Total volume of melted material greater than {100 * REGRIND_CUTOFF}%, calculating new state...")
@@ -87,6 +106,7 @@ def separate_solid_and_melt(step: SimulationState, phases: SolidPhaseSet, temp: 
     return new_solid_state    
 
 def melt_and_regrind(step: SimulationState, phases: SolidPhaseSet, temp: int):
+    _deprecation_warning()
     total_melted_vol_frac = calculate_melted_fraction(step, phases, temp)
     should_recalc_melted = total_melted_vol_frac > REGRIND_CUTOFF
     analyzer = ReactionStepAnalyzer(phases)
