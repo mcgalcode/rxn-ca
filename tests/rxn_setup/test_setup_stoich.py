@@ -29,15 +29,21 @@ def test_stoich():
     analyzer = ReactionStepAnalyzer(phases)
     analyzer.set_step_group(sim.state)
     true_el_bdown = analyzer.get_molar_elemental_composition()
-    true_phase_bdown = analyzer.get_all_absolute_molar_amounts()
+    true_mole_fracs = analyzer.get_all_mole_fractions()
 
     EL_TOL = 0.02
     for phase, amt in expected_elemental_bdown.items():
         assert (true_el_bdown.get(phase) - amt) / true_el_bdown.get(phase) < EL_TOL
 
-    PHASE_ABS_TOL = 0.5
-    for phase, amt in expected_molar_ratios.items():
-        assert (true_phase_bdown.get(phase) - amt) / true_phase_bdown.get(phase) < PHASE_ABS_TOL
+    # Compare mole fractions (not absolute amounts) since setup normalizes to fit the grid
+    total_expected = sum(expected_molar_ratios.values())
+    expected_mole_fracs = {p: amt / total_expected for p, amt in expected_molar_ratios.items()}
+
+    PHASE_FRAC_TOL = 0.015
+    for phase, expected_frac in expected_mole_fracs.items():
+        actual_frac = true_mole_fracs.get(phase, 0)
+        deviation = np.abs(actual_frac - expected_frac) / expected_frac
+        assert deviation < PHASE_FRAC_TOL, f'{phase}: expected {expected_frac:.4f}, got {actual_frac:.4f}, dev {deviation:.4f}'
 
 def test_stoich_two():
     expected_molar_ratios = {'YMn2O5': 0.4064785252678766,
@@ -69,7 +75,7 @@ def test_stoich_two():
     analyzer = ReactionStepAnalyzer(phases)
     analyzer.set_step_group(sim.state)
     true_el_bdown = analyzer.get_fractional_elemental_composition()
-    true_phase_bdown = analyzer.get_all_absolute_molar_amounts()
+    true_mole_fracs = analyzer.get_all_mole_fractions()
 
     print(expected_elemental_bdown, true_el_bdown)
 
@@ -78,9 +84,14 @@ def test_stoich_two():
         dev = np.abs(true_el_bdown.get(phase) - amt) / true_el_bdown.get(phase)
         assert dev < EL_TOL
 
-    PHASE_ABS_TOL = 0.015
-    print(expected_molar_ratios)
-    print(true_phase_bdown)
-    for phase, amt in expected_molar_ratios.items():
-        deviation = np.abs(true_phase_bdown.get(phase) - amt) / true_phase_bdown.get(phase)
-        assert deviation < PHASE_ABS_TOL
+    # Compare mole fractions (not absolute amounts) since setup normalizes to fit the grid
+    total_expected = sum(expected_molar_ratios.values())
+    expected_mole_fracs = {p: amt / total_expected for p, amt in expected_molar_ratios.items()}
+
+    PHASE_FRAC_TOL = 0.015
+    print(expected_mole_fracs)
+    print(true_mole_fracs)
+    for phase, expected_frac in expected_mole_fracs.items():
+        actual_frac = true_mole_fracs.get(phase, 0)
+        deviation = np.abs(actual_frac - expected_frac) / expected_frac
+        assert deviation < PHASE_FRAC_TOL, f'{phase}: expected {expected_frac:.4f}, got {actual_frac:.4f}, dev {deviation:.4f}'
