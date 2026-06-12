@@ -32,31 +32,17 @@ class TestOptimizableRecipe:
                 hold_time=5,
             )
 
-    def test_ramp_rate_conversion(self):
-        """Ramp rate is converted to sweep_step_size."""
+    def test_ramp_step_time_backward_compat(self):
+        """Can still use ramp_step_time directly."""
         recipe = OptimizableRecipe(
             precursors={"BaO": 0.5},
             hold_temp=1000,
             hold_time=5,
-            ramp_rate=10.0,  # 10 K/step
+            ramp_step_time=5,
         )
 
-        # TEMP_STEP_SIZE = 50, so sweep_step_size = 50/10 = 5
-        assert recipe.ramp_rate == 10.0
-        assert recipe.sweep_step_size == 5
-
-    def test_sweep_step_size_backward_compat(self):
-        """Can still use sweep_step_size directly."""
-        recipe = OptimizableRecipe(
-            precursors={"BaO": 0.5},
-            hold_temp=1000,
-            hold_time=5,
-            sweep_step_size=5,
-        )
-
-        # ramp_rate = 50/5 = 10
-        assert recipe.sweep_step_size == 5
-        assert recipe.ramp_rate == 10.0
+        # ramp_step_time = 5
+        assert recipe.ramp_step_time == 5
 
     def test_to_recipe(self):
         """Can convert to ReactionRecipe."""
@@ -97,7 +83,7 @@ class TestOptimizableRecipe:
         params = {
             "hold_temp": 1000,
             "hold_time": 5,
-            "ramp_rate": 10.0,
+            "ramp_step_time": 5,
             "Ba_source_ratio": 0.5,
             "Ti_source_ratio": 0.5,
         }
@@ -115,7 +101,7 @@ class TestOptimizableRecipe:
 
         assert recipe.hold_temp == 1000
         assert recipe.hold_time == 5
-        assert recipe.ramp_rate == 10.0
+        assert recipe.ramp_step_time == 5
         assert recipe.precursors["BaO"] == 0.5
         assert recipe.precursors["TiO2"] == 0.5
         assert recipe.simulation_size == 8
@@ -133,6 +119,7 @@ class TestOptimizableRecipe:
 
         assert recipe.hold_temp == 1000
         assert recipe.hold_time == 5  # Default from params.get
+        assert recipe.ramp_step_time == 1  # Default from params.get
         assert recipe.precursors["BaO"] == 0.5  # Default ratio
 
     def test_repr(self):
