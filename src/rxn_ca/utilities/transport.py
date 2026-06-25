@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 
 import numpy as np
-import pkg_resources
+from importlib.resources import files
 from monty.json import MontyDecoder
 from pymatgen.core.composition import Composition
 from pydantic import BaseModel, Field
@@ -323,7 +323,7 @@ class TransportDatabase:
             target_els = frozenset(chemsys.split("-"))
 
         transport_dir = Path(
-            pkg_resources.resource_filename("rxn_ca.phases", "transport_db")
+            str(files("rxn_ca.phases").joinpath("transport_db"))
         )
         db = cls()
         for json_path in sorted(transport_dir.glob("*.json")):

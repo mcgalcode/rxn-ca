@@ -24,7 +24,6 @@ classifiers = [
 dynamic = ["version"]
 
 dependencies = [
-    "setuptools",
     "numpy>=1.21.5",
     "matplotlib>=3.5.1",
     "tqdm>=4.63.0",
