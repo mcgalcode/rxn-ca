@@ -1,4 +1,6 @@
-# rxn-ca
+<p align="center">
+  <img src="assets/logo/cube-wordmark.svg" alt="rxn-ca" width="420">
+</p>
 
 A lattice model for simulating solid state reactions.
 
