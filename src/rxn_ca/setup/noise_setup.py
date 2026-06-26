@@ -37,8 +37,12 @@ class SetupRandomNoise():
         site_ids = struct.site_ids
         shuffle(site_ids)
 
-        for i, occ in enumerate(cell_occs):
-            state.set_site_state(site_ids[i], {
+        # zip stops at the shorter of the two: when rounding the desired phase
+        # volumes yields one more cell than there are sites (e.g. packing
+        # fraction 1.0 at certain sizes), the extra cell is harmlessly dropped
+        # instead of raising an IndexError on site_ids[i].
+        for occ, sid in zip(cell_occs, site_ids):
+            state.set_site_state(sid, {
                 DISCRETE_OCCUPANCY: occ,
                 VOLUME: 1.0
             })
