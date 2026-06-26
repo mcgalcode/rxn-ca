@@ -163,14 +163,8 @@ class ReactionCalculator():
                 )])
              # Case 3) No reactions of any kind are plausible
             # else:
-        possible_interactions.append(SiteInteraction(
-            is_no_op=True,
-            score=self.inertia
-        ))
 
-        # print([i.score for i in interactions])
-        
-        possible_interactions.extend(interactions)
+            possible_interactions.extend(interactions)
 
         # It's possible that a square might just dissolve as well
         decomp_rxns = self.rxn_set.get_reactions([site_one_phase])
