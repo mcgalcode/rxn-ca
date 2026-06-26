@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="240" viewBox="0 0 560 240">
+
+<rect x="29.60" y="48.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#E89A3C"/>
+<rect x="29.60" y="78.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#82B366"/>
+<rect x="29.60" y="108.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#E89A3C"/>
+<rect x="29.60" y="138.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#E89A3C"/>
+<rect x="29.60" y="168.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#E89A3C"/>
+<rect x="59.60" y="48.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#E89A3C"/>
+<rect x="59.60" y="78.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#D9722F"/>
+<rect x="59.60" y="108.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#D9722F"/>
+<rect x="59.60" y="138.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#82B366"/>
+<rect x="59.60" y="168.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#D9722F"/>
+<rect x="89.60" y="48.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#E8736B"/>
+<rect x="89.60" y="78.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#E8736B"/>
+<rect x="89.60" y="108.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#E8736B"/>
+<rect x="89.60" y="138.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#E8736B"/>
+<rect x="89.60" y="168.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#2BA89B"/>
+<rect x="119.60" y="48.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#E8736B"/>
+<rect x="119.60" y="78.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#2BA89B"/>
+<rect x="119.60" y="108.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#2BA89B"/>
+<rect x="119.60" y="138.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#2BA89B"/>
+<rect x="119.60" y="168.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#5FAEDC"/>
+<rect x="149.60" y="48.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#5FAEDC"/>
+<rect x="149.60" y="78.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#D9722F"/>
+<rect x="149.60" y="108.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#5FAEDC"/>
+<rect x="149.60" y="138.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#2BA89B"/>
+<rect x="149.60" y="168.60" width="22.80" height="22.80" rx="5.02" ry="5.02" fill="#5FAEDC"/>
+<text x="210" y="148" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="74" font-weight="700" fill="#1C1F24" letter-spacing="-1.5">React<tspan fill="#E8736B">CA</tspan></text><text x="212" y="184" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="20.5" font-weight="500" fill="#2B2F36" letter-spacing="0.5">solid-state reaction simulator</text>
+</svg>

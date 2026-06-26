@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="240" viewBox="0 0 560 240">
+
+<rect x="32.00" y="56.00" width="128.00" height="128.00" rx="20.48" ry="20.48" fill="#E89A3C"/>
+<rect x="85.32" y="66.44" width="36.72" height="36.72" rx="7.34" ry="7.34" fill="#FFFFFF"/>
+<rect x="88.32" y="69.44" width="30.72" height="30.72" rx="5.53" ry="5.53" fill="#5FAEDC"/>
+<rect x="98.40" y="122.40" width="74.56" height="74.56" rx="12.68" ry="12.68" fill="#FFFFFF"/>
+<rect x="102.40" y="126.40" width="66.56" height="66.56" rx="11.32" ry="11.32" fill="#2BA89B"/>
+<text x="210" y="148" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="74" font-weight="700" fill="#1C1F24" letter-spacing="-1.5">React<tspan fill="#E8736B">CA</tspan></text><text x="212" y="184" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="20.5" font-weight="500" fill="#2B2F36" letter-spacing="0.5">solid-state reaction simulator</text>
+</svg>
