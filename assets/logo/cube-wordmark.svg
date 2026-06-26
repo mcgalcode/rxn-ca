@@ -192,5 +192,5 @@
 <polygon points="86.88,165.45 95.02,170.15 95.02,179.55 86.88,174.85" fill="#2BA89B" stroke="#3A3F47" stroke-width="0.8500000000000001" stroke-linejoin="round" opacity="0.88"/>
 <polygon points="86.88,175.45 95.02,180.15 95.02,189.55 86.88,184.85" fill="#2BA89B" stroke="#3A3F47" stroke-width="0.8500000000000001" stroke-linejoin="round" opacity="0.88"/>
 <polygon points="86.88,185.45 95.02,190.15 95.02,199.55 86.88,194.85" fill="#2BA89B" stroke="#3A3F47" stroke-width="0.8500000000000001" stroke-linejoin="round" opacity="0.88"/>
-<text x="193" y="148" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="74" font-weight="700" fill="#1C1F24" letter-spacing="-2">rxn<tspan fill="#D9722F">-</tspan>ca</text><text x="195" y="184" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="20.5" font-weight="500" fill="#2B2F36" letter-spacing="0.5">solid-state reaction CA</text>
+<text x="193" y="148" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="74" font-weight="700" fill="#1C1F24" letter-spacing="-1.5">React<tspan fill="#D9722F">CA</tspan></text><text x="195" y="184" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="20.5" font-weight="500" fill="#2B2F36" letter-spacing="0.5">solid-state reaction CA</text>
 </svg>
