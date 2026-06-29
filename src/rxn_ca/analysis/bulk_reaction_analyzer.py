@@ -8,7 +8,9 @@ from .reaction_step_analyzer import ReactionStepAnalyzer
 
 from ..computing.schemas.ca_result_schema import RxnCAResultDoc
 
-from typing import Tuple, List
+from pylattica.core import ObservedResult
+
+from typing import Tuple, List, Union
 import numpy as np
     
 def color(color, text):
@@ -30,17 +32,32 @@ class BulkReactionAnalyzer():
     def from_result_doc(cls, doc: RxnCAResultDoc) -> BulkReactionAnalyzer:
         return cls(doc.results, doc.phases, doc.recipe.heating_schedule)
     
-    def __init__(self, results: List[ReactionResult], phase_set: SolidPhaseSet, heating_sched: HeatingSchedule):
+    def __init__(self, results: Union[List[ReactionResult], List[ObservedResult]], phase_set: SolidPhaseSet, heating_sched: HeatingSchedule):
         """Initializes a ReactionResult with the reaction set used in the simulation
 
         Args:
-            rxn_set (ScoredReactionSet):
+            results: Either full ReactionResults, or, in analysis-only mode, the
+                ObservedResults produced by a PhaseVolumeObserver. In analysis-only
+                mode only volume-derived quantities are available (no per-site or
+                reaction-choice analyses), and steps can only be analyzed at the
+                observed cadence.
+            phase_set (SolidPhaseSet):
+            heating_sched (HeatingSchedule):
         """
         self.step_analyzer = ReactionStepAnalyzer(phase_set)
         self.heating_schedule = heating_sched
         self.phase_set = phase_set
 
-        self.result_length = len(results[0])
+        # Analysis-only mode: results carry precomputed per-phase volumes
+        # (ObservedResult) rather than reconstructable full states.
+        self._analysis_only = isinstance(results[0], ObservedResult)
+
+        if self._analysis_only:
+            # ObservedResult.__len__ counts observations, not steps; use the
+            # tracked total step count to keep result_length consistent.
+            self.result_length = results[0]._total_steps + 1
+        else:
+            self.result_length = len(results[0])
         self.results = results
         self._results_loaded = False
         self._step_idxs = None
@@ -63,12 +80,21 @@ class BulkReactionAnalyzer():
         return self._step_groups
       
     def get_analyzer(self, step_group):
+        # In analysis-only mode a "step group" is precomputed per-phase volumes
+        # (one dict per result); otherwise it is full simulation states.
+        if self._analysis_only:
+            return self.step_analyzer.set_precomputed_volumes(step_group)
         return self.step_analyzer.set_step_group(step_group)
-    
+
     def analyze_step(self, step_number):
         return self.get_analyzer(self.get_steps(step_number))
-    
+
     def get_step_size(self):
+        if self._analysis_only:
+            raise RuntimeError(
+                "get_step_size requires full simulation states; it is "
+                "unavailable in analysis-only mode."
+            )
         return self.get_analyzer(self.get_first_steps()[0]).get_simulation_size()
 
     def get_elemental_amounts_at(self, step_no):
@@ -87,12 +113,19 @@ class BulkReactionAnalyzer():
         return self.analyze_step(step_no).get_all_absolute_molar_amounts()
     
     def get_steps(self, step_no):
+        if self._analysis_only:
+            # Only observed steps are available; surface a clear error otherwise.
+            return [r.observation_at(step_no) for r in self.results]
         return [r.get_step(step_no) for r in self.results]
-    
+
     def get_final_steps(self):
+        if self._analysis_only:
+            return [r.observation_at(r.observation_steps[-1]) for r in self.results]
         return [r.last_step for r in self.results]
 
     def get_first_steps(self):
+        if self._analysis_only:
+            return [r.observation_at(r.observation_steps[0]) for r in self.results]
         return [r.first_step for r in self.results]
 
     def all_phases_present(self, min_mass_fraction_prevalence=0.0):
@@ -133,6 +166,17 @@ class BulkReactionAnalyzer():
         if self._step_idxs is None:
             first_result = self.results[0]
 
+            if self._analysis_only:
+                # Observations are already reduced and stored at their own
+                # cadence; group them across results by observed step number.
+                self._step_idxs = first_result.observation_steps
+                self._results_loaded = True
+                self._step_groups = [
+                    [r.observation_at(step_idx) for r in self.results]
+                    for step_idx in self._step_idxs
+                ]
+                return self._step_idxs, self._step_groups
+
             # Check if results use live_compress (frames already stored)
             if hasattr(first_result, '_frames') and first_result._frames:
                 # Use the stored frames directly - no reconstruction needed
@@ -157,9 +201,14 @@ class BulkReactionAnalyzer():
     
     def has_simulation_converged(self, convergence_criteria : float = 0.001) -> bool:
         """Check if a simulation has converged based on the phase data"""
-        
+
         converged = True
-        phase_amounts = [self.get_all_absolute_molar_amounts(i) for i in range(self.result_length-10, self.result_length)]
+        if self._analysis_only:
+            # Only observed steps exist; use the final window of observations.
+            final_idxs = self.loaded_step_idxs[-10:]
+            phase_amounts = [self.get_all_absolute_molar_amounts(i) for i in final_idxs]
+        else:
+            phase_amounts = [self.get_all_absolute_molar_amounts(i) for i in range(self.result_length-10, self.result_length)]
         for phase in phase_amounts[0].keys():
             if phase in [*DEFAULT_GASES, SolidPhaseSet.FREE_SPACE]:
                 continue
