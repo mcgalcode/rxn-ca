@@ -202,7 +202,15 @@ class ScoredReaction:
         Returns:
             float: The volume of product produced
         """
-        ratio = self._products[product] / self._reactants[reactant]
+        # NOTE: We intentionally use the bulk solid product/reactant ratio here rather
+        # than the per-pair ratio (self._products[product] / self._reactants[reactant]).
+        # The CA consumes one reactant cell and replaces it with a single product phase
+        # chosen arbitrarily, so per-event reactant->product pairings are not tracked.
+        # The bulk ratio yields mean-field mass conservation: total produced volume
+        # ~= (total consumed reactant volume) * (V_products / V_reactants), which holds
+        # regardless of which specific product each cell becomes. The per-pair ratio only
+        # conserves mass if pairings are tracked with exact multiplicities, so it drifts
+        # in practice. Empirically the bulk ratio conserves mass better. Do not "fix" this.
         return reactant_vol * self.solid_product_reactant_stoich_ratio
     
     def convert_to_moles(self, phase_set: SolidPhaseSet):

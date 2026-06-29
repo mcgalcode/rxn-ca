@@ -139,9 +139,13 @@ class BulkReactionAnalyzer():
                 self._step_idxs = sorted(first_result._frames.keys())
                 self._results_loaded = True
             else:
-                # Traditional mode: load steps at computed interval
-                num_points = self.result_length / 2
-                step_size = max(1, round(self.result_length / num_points))
+                # Traditional mode: load steps at computed interval.
+                # NOTE: The previous formula (num_points = result_length / 2;
+                # step_size = round(result_length / num_points)) always evaluates to 2,
+                # so this has always sampled every other step. Intent is unverified, so we
+                # preserve that exact behavior here rather than risk changing all analysis
+                # outputs. Revisit if a fixed target point count is actually desired.
+                step_size = 2
                 if not self._results_loaded:
                     [r.load_steps(step_size) for r in self.results]
                     self._results_loaded = True
@@ -157,7 +161,7 @@ class BulkReactionAnalyzer():
         converged = True
         phase_amounts = [self.get_all_absolute_molar_amounts(i) for i in range(self.result_length-10, self.result_length)]
         for phase in phase_amounts[0].keys():
-            if phase in [*DEFAULT_GASES, "FREE_SPACE"]:
+            if phase in [*DEFAULT_GASES, SolidPhaseSet.FREE_SPACE]:
                 continue
             if np.std([p[phase] for p in phase_amounts]) / np.mean([p[phase] for p in phase_amounts]) > convergence_criteria:
                 converged = False
