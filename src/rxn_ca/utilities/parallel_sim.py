@@ -17,7 +17,7 @@ _reaction_lib = "reaction_lib"
 _recipe = "recipe"
 _initial_simulation = "initial_simulation"
 _compress_freq = "compress_freq"
-_live_compress = "live_compress"
+_num_frames = "num_frames"
 
 
 def _get_result(_):
@@ -26,8 +26,8 @@ def _get_result(_):
         mp_globals[_recipe],
         reaction_lib=mp_globals.get(_reaction_lib),
         initial_simulation=mp_globals.get(_initial_simulation),
-        compress_freq=mp_globals.get(_compress_freq, 1),
-        live_compress=mp_globals.get(_live_compress, False),
+        compress_freq=mp_globals.get(_compress_freq, None),
+        num_frames=mp_globals.get(_num_frames, None),
     )
     return (result.results[0], result.final_simulation)
 
@@ -38,8 +38,8 @@ def run_sim_parallel(recipe: ReactionRecipe,
                      initial_simulation: Simulation = None,
                      phase_set: SolidPhaseSet = None,
                      existing_lib: ReactionLibrary = None,
-                     compress_freq: int = 1,
-                     live_compress: bool = False):
+                     compress_freq: int = None,
+                     num_frames: int = None):
     """Run simulation with multiple realizations in parallel.
 
     Args:
@@ -50,9 +50,10 @@ def run_sim_parallel(recipe: ReactionRecipe,
         phase_set: Phase set for the system
         existing_lib: Existing library with some temps already scored.
             New temps will be added to this library incrementally.
-        compress_freq: Interval for storing frames when live_compress is True.
-        live_compress: If True, store full state snapshots at compress_freq
-            intervals instead of diffs. Avoids slow reconstruction during analysis.
+        compress_freq: If set, store a full state snapshot every compress_freq
+            steps instead of per-step diffs. Cannot be combined with num_frames.
+        num_frames: If set, store roughly this many full state snapshots over
+            the run. Cannot be combined with compress_freq.
 
     Returns:
         RxnCAResultDoc with averaged results from all realizations
@@ -93,7 +94,7 @@ def run_sim_parallel(recipe: ReactionRecipe,
         _recipe: recipe,
         _initial_simulation: initial_simulation,
         _compress_freq: compress_freq,
-        _live_compress: live_compress,
+        _num_frames: num_frames,
     }
 
     with mp.get_context("fork").Pool(recipe.num_realizations) as pool:

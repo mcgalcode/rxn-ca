@@ -23,8 +23,10 @@ class HeatingScheduleRunner():
                 reaction_lib: ReactionLibrary,
                 heating_schedule: HeatingSchedule,
                 controller: BasicController,
-                verbose=True):
-        runner = AsynchronousRunner()       
+                verbose=True,
+                compress_freq: int = None,
+                num_frames: int = None):
+        runner = AsynchronousRunner()
         results: List[ReactionResult] = []
 
         starting_state = simulation.state
@@ -69,7 +71,9 @@ class HeatingScheduleRunner():
                     starting_state,
                     controller,
                     num_simulation_steps,
-                    verbose=verbose
+                    verbose=verbose,
+                    compress_freq=compress_freq,
+                    num_frames=num_frames,
                 )
 
                 results.append(result)
@@ -96,13 +100,12 @@ class MeltAndRegrindMultiRunner(HeatingScheduleRunner):
 def concatenate_results(results: List[ReactionResult]):
     starting_state = results[0].initial_state
 
-    # Preserve compress_freq and live_compress from first result
+    # Preserve the compression strategy from the first result. Compression is
+    # now configured on the result rather than passed to the constructor.
     first_result = results[0]
-    new_result = ReactionResult(
-        starting_state,
-        compress_freq=first_result.compress_freq,
-        live_compress=first_result.live_compress,
-    )
+    new_result = ReactionResult(starting_state)
+    if first_result.live_compress:
+        new_result.configure_compression(compress_freq=first_result.compress_freq)
 
     # Track cumulative step offset for frame indices
     step_offset = 0

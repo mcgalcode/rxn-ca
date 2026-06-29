@@ -1,34 +1,16 @@
-from pylattica.core import SimulationState, SimulationResult
+from pylattica.core import SimulationResult
 
 
 class ReactionResult(SimulationResult):
     """A class that stores the result of running a simulation. Keeps track of all
     the steps that the simulation proceeded through, and the set of reactions that
     was used in the simulation.
+
+    Compression (live frame storage) is configured by the runner via
+    SimulationResult.configure_compression, driven by the compress_freq /
+    num_frames arguments passed to runner.run(). This class adds no compression
+    behavior of its own.
     """
 
-    # Inherits from_dict from SimulationResult - it uses cls() so creates ReactionResult
-
-    def __init__(
-        self,
-        starting_state: SimulationState,
-        compress_freq: int = 1,
-        max_history: int = None,
-        live_compress: bool = False,
-    ):
-        """Initializes a ReactionResult.
-
-        Args:
-            starting_state: The initial simulation state.
-            compress_freq: Interval for storing frames when live_compress is True.
-            max_history: Max diffs to keep before checkpointing (None = unlimited).
-            live_compress: If True, store full state snapshots at compress_freq
-                intervals instead of diffs. Avoids slow reconstruction in analysis.
-        """
-        super().__init__(
-            starting_state,
-            compress_freq=compress_freq,
-            max_history=max_history,
-            live_compress=live_compress,
-        )
-    
+    # Inherits __init__ and from_dict from SimulationResult (from_dict uses
+    # cls(), so it produces a ReactionResult).

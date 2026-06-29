@@ -354,8 +354,8 @@ class BaseOptimizer(ABC):
             "scorer_type": config.scorer_type.value,
             "simulation_size": config.simulation_size,
             "num_realizations": config.num_realizations,
-            "live_compress": config.live_compress,
             "compress_freq": config.compress_freq,
+            "num_frames": config.num_frames,
         }
 
     def _save_simulation_result(

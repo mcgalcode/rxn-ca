@@ -108,7 +108,6 @@ def react():
                     initial_simulation=initial_simulation,
                     phase_set=phases,
                     compress_freq=500,
-                    live_compress=True,
                 )
             else:
                 result_doc = run_single_sim(
@@ -127,7 +126,6 @@ def react():
                     initial_simulation=initial_simulation,
                     phase_set=phases,
                     compress_freq=500,
-                    live_compress=True,
                 )
             else:
                 result_doc = run_sim_parallel(

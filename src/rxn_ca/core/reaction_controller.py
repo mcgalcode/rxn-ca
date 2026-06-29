@@ -34,23 +34,16 @@ class ReactionController(BasicController):
         self,
         structure: PeriodicStructure,
         rxn_calculator: ReactionCalculator,
-        compress_freq: int = 1,
-        live_compress: bool = False,
     ) -> None:
         self.reaction_calculator = rxn_calculator
         self.structure = structure
-        self.compress_freq = compress_freq
-        self.live_compress = live_compress
 
     def set_rxn_set(self, rxn_set: ScoredReactionSet):
         self.reaction_calculator.set_rxn_set(rxn_set)
 
     def instantiate_result(self, starting_state: SimulationState):
-        return ReactionResult(
-            starting_state,
-            compress_freq=self.compress_freq,
-            live_compress=self.live_compress,
-        )
+        # Compression is configured by the runner after instantiation.
+        return ReactionResult(starting_state)
 
     def get_state_update(self, site_id: int, prev_state: SimulationState):
         return self.reaction_calculator.get_state_update(site_id, prev_state)
