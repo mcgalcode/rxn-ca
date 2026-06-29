@@ -19,19 +19,73 @@ class AnalysisQuantity(Enum):
     ELEMENTS = "ELEMENT"
 
 class AnalysisMode(Enum):
-    
+
     ABSOLUTE   = "ABSOLUTE"
     FRACTIONAL = "FRACTIONAL"
+
+
+def phase_volumes_for_state(state: SimulationState) -> Dict[str, float]:
+    """Per-phase absolute volumes (including evolved gases) for a single state.
+
+    This is the minimal sufficient statistic from which every other analyzer
+    quantity (moles, mass, fractions, elemental composition) is derived. It is
+    the single source of truth shared by ReactionStepAnalyzer (which sums it
+    across a step group) and PhaseVolumeObserver (which records it per frame).
+    """
+    phase_amts: Dict[str, float] = {}
+    vol_multiplier = state.get_general_state().get(VOL_MULTIPLIER, 1.0)
+
+    for site in state.all_site_states():
+        phase = site[DISCRETE_OCCUPANCY]
+        if phase != SolidPhaseSet.FREE_SPACE:
+            vol = site[VOLUME] * vol_multiplier
+            phase_amts[phase] = phase_amts.get(phase, 0) + vol
+
+    gaseous = state.get_general_state().get(GASES_EVOLVED, {})
+    for phase, vol in gaseous.items():
+        phase_amts[phase] = phase_amts.get(phase, 0) + vol
+
+    return phase_amts
+
 
 class ReactionStepAnalyzer():
 
     def __init__(self, phase_set: SolidPhaseSet) -> None:
         self.phase_set: SolidPhaseSet = phase_set
+        self.steps: List[SimulationState] = None
+        # When set, derived quantities are computed from these precomputed
+        # per-phase volumes instead of from full simulation states (see
+        # set_precomputed_volumes / PhaseVolumeObserver).
+        self._precomputed_volumes: Dict[str, float] = None
 
     def set_step_group(self, step_group: Union[List[SimulationState], SimulationState]):
         if not isinstance(step_group, list):
             step_group = [step_group]
         self.steps = step_group
+        self._precomputed_volumes = None
+        return self
+
+    def set_precomputed_volumes(
+        self, volumes: Union[Dict[str, float], List[Dict[str, float]]]
+    ):
+        """Configure the analyzer from precomputed per-phase volumes.
+
+        Mirrors set_step_group, but for the reduced (volume-only) view produced
+        by PhaseVolumeObserver. Accepts a single volume dict or a list of dicts;
+        a list is summed, matching how set_step_group sums volumes across a step
+        group. State-dependent methods (e.g. get_simulation_size) are not
+        available in this mode.
+        """
+        if isinstance(volumes, dict):
+            volumes = [volumes]
+
+        summed: Dict[str, float] = {}
+        for vol_dict in volumes:
+            for phase, vol in vol_dict.items():
+                summed[phase] = summed.get(phase, 0) + vol
+
+        self._precomputed_volumes = summed
+        self.steps = None
         return self
     
     def get_value_general(self,
@@ -77,34 +131,28 @@ class ReactionStepAnalyzer():
 
 
     def get_all_absolute_phase_volumes(self):
-        phase_amts = {}
+        # In precomputed mode the per-phase volumes are already reduced (and
+        # summed across the group) -- return a copy so callers can mutate freely.
+        if self._precomputed_volumes is not None:
+            return dict(self._precomputed_volumes)
+
+        phase_amts: Dict[str, float] = {}
         for step in self.steps:
-            vol_multiplier = step.get_general_state().get(VOL_MULTIPLIER, 1.0)
-
-            for site in step.all_site_states():
-                phase = site[DISCRETE_OCCUPANCY]
-                if phase != SolidPhaseSet.FREE_SPACE:
-                    vol = site[VOLUME] * vol_multiplier
-                    if phase in phase_amts:
-                        phase_amts[phase] += vol
-                    else:
-                        phase_amts[phase] = vol
-
-            gaseous = step.get_general_state().get(GASES_EVOLVED, {})
-
-            for phase, vol in gaseous.items():
-                if phase in phase_amts:
-                    phase_amts[phase] += vol
-                else:
-                    phase_amts[phase] = vol
+            for phase, vol in phase_volumes_for_state(step).items():
+                phase_amts[phase] = phase_amts.get(phase, 0) + vol
 
         return phase_amts
     
     def get_total_mass(self):
+        # In precomputed mode there are no sites to iterate; derive the total
+        # from the (volume-derived) per-phase masses instead.
+        if self._precomputed_volumes is not None:
+            return sum(self.get_all_absolute_phase_masses().values())
+
         vol = 0
         for step in self.steps:
             for site in step.all_site_states():
-                vol += site[VOLUME] * self.phase_set.get_density(site[DISCRETE_OCCUPANCY])       
+                vol += site[VOLUME] * self.phase_set.get_density(site[DISCRETE_OCCUPANCY])
         return vol
     
     def get_avg_volume(self):

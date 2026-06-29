@@ -1,2 +1,3 @@
 from .reaction_step_analyzer import ReactionStepAnalyzer
 from .bulk_reaction_analyzer import BulkReactionAnalyzer
+from .phase_volume_observer import PhaseVolumeObserver
