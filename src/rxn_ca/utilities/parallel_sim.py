@@ -18,6 +18,7 @@ _recipe = "recipe"
 _initial_simulation = "initial_simulation"
 _compress_freq = "compress_freq"
 _num_frames = "num_frames"
+_analysis_only = "analysis_only"
 
 
 def _get_result(_):
@@ -28,7 +29,12 @@ def _get_result(_):
         initial_simulation=mp_globals.get(_initial_simulation),
         compress_freq=mp_globals.get(_compress_freq, None),
         num_frames=mp_globals.get(_num_frames, None),
+        analysis_only=mp_globals.get(_analysis_only, False),
     )
+    # In analysis-only mode the per-realization payload is the ObservedResult;
+    # otherwise it is the full ReactionResult.
+    if result.observed_results:
+        return (result.observed_results[0], result.final_simulation)
     return (result.results[0], result.final_simulation)
 
 
@@ -39,7 +45,8 @@ def run_sim_parallel(recipe: ReactionRecipe,
                      phase_set: SolidPhaseSet = None,
                      existing_lib: ReactionLibrary = None,
                      compress_freq: int = None,
-                     num_frames: int = None):
+                     num_frames: int = None,
+                     analysis_only: bool = False):
     """Run simulation with multiple realizations in parallel.
 
     Args:
@@ -54,6 +61,9 @@ def run_sim_parallel(recipe: ReactionRecipe,
             steps instead of per-step diffs. Cannot be combined with num_frames.
         num_frames: If set, store roughly this many full state snapshots over
             the run. Cannot be combined with compress_freq.
+        analysis_only: If True, retain only the reduced per-phase-volume view of
+            each realization (via a PhaseVolumeObserver) at the compress_freq /
+            num_frames cadence, stored under RxnCAResultDoc.observed_results.
 
     Returns:
         RxnCAResultDoc with averaged results from all realizations
@@ -95,6 +105,7 @@ def run_sim_parallel(recipe: ReactionRecipe,
         _initial_simulation: initial_simulation,
         _compress_freq: compress_freq,
         _num_frames: num_frames,
+        _analysis_only: analysis_only,
     }
 
     with mp.get_context("fork").Pool(recipe.num_realizations) as pool:
@@ -105,13 +116,24 @@ def run_sim_parallel(recipe: ReactionRecipe,
     good_results = [res for res in results if res is not None]
     print(f'{len(good_results)} results achieved out of {len(sim_results)}')
 
-    result_doc = RxnCAResultDoc(
-        recipe=recipe,
-        results=good_results,
-        reaction_library=reaction_lib,
-        phases=reaction_lib.phases,
-        final_simulation=final_simulations[-1]
-    )
+    # In analysis-only mode each realization returns an ObservedResult, which
+    # belongs in observed_results rather than results.
+    if analysis_only:
+        result_doc = RxnCAResultDoc(
+            recipe=recipe,
+            observed_results=good_results,
+            reaction_library=reaction_lib,
+            phases=reaction_lib.phases,
+            final_simulation=final_simulations[-1]
+        )
+    else:
+        result_doc = RxnCAResultDoc(
+            recipe=recipe,
+            results=good_results,
+            reaction_library=reaction_lib,
+            phases=reaction_lib.phases,
+            final_simulation=final_simulations[-1]
+        )
 
     return result_doc
 

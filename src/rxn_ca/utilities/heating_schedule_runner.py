@@ -6,9 +6,10 @@ from ..core.constants import GASES_EVOLVED, GASES_CONSUMED, MELTED_AMTS, TEMPERA
 from ..reactions.reaction_library import ReactionLibrary
 from ..core.melt_and_regrind import melt_and_regrind
 from ..analysis.reaction_step_analyzer import ReactionStepAnalyzer
+from ..analysis.phase_volume_observer import PhaseVolumeObserver
 from .setup_reaction import setup_noise_reaction
 
-from pylattica.core import AsynchronousRunner, Simulation, BasicController
+from pylattica.core import AsynchronousRunner, ObservedResult, Simulation, BasicController
 
 from typing import List, Callable
 import numpy as np
@@ -25,7 +26,8 @@ class HeatingScheduleRunner():
                 controller: BasicController,
                 verbose=True,
                 compress_freq: int = None,
-                num_frames: int = None):
+                num_frames: int = None,
+                analysis_only: bool = False):
         runner = AsynchronousRunner()
         results: List[ReactionResult] = []
 
@@ -67,14 +69,29 @@ class HeatingScheduleRunner():
                 print("Setting temperature state")
                 starting_state.set_general_state({TEMPERATURE: step.temperature })
 
-                result = runner.run(
-                    starting_state,
-                    controller,
-                    num_simulation_steps,
-                    verbose=verbose,
-                    compress_freq=compress_freq,
-                    num_frames=num_frames,
-                )
+                if analysis_only:
+                    # Record only the reduced per-phase-volume view (no full
+                    # states). compress_freq / num_frames set the observation
+                    # cadence here instead of a frame-retention cadence.
+                    result = runner.run(
+                        starting_state,
+                        controller,
+                        num_simulation_steps,
+                        verbose=verbose,
+                        retain_history=False,
+                        observers=[PhaseVolumeObserver()],
+                        observe_freq=compress_freq,
+                        observe_num_frames=num_frames,
+                    )
+                else:
+                    result = runner.run(
+                        starting_state,
+                        controller,
+                        num_simulation_steps,
+                        verbose=verbose,
+                        compress_freq=compress_freq,
+                        num_frames=num_frames,
+                    )
 
                 results.append(result)
             elif isinstance(step, RegrindStep):
@@ -98,11 +115,17 @@ class MeltAndRegrindMultiRunner(HeatingScheduleRunner):
         super().__init__([melt_and_regrind])
 
 def concatenate_results(results: List[ReactionResult]):
-    starting_state = results[0].initial_state
+    first_result = results[0]
+
+    # Analysis-only results retain no frames/diffs -- only the merged per-frame
+    # observations and the final live state need to be carried forward.
+    if not first_result.retain_history:
+        return _concatenate_analysis_only(results)
+
+    starting_state = first_result.initial_state
 
     # Preserve the compression strategy from the first result. Compression is
     # now configured on the result rather than passed to the constructor.
-    first_result = results[0]
     new_result = ReactionResult(starting_state)
     if first_result.live_compress:
         new_result.configure_compression(compress_freq=first_result.compress_freq)
@@ -130,4 +153,37 @@ def concatenate_results(results: List[ReactionResult]):
             for d in res._diffs:
                 new_result.add_step(d)
 
+    return new_result
+
+
+def _concatenate_analysis_only(results: List[ReactionResult]) -> ReactionResult:
+    """Concatenate analysis-only (retain_history=False) heating-step results.
+
+    Each input carries a single ObservedResult of per-phase volumes. The
+    observations are merged into one ObservedResult with step numbers offset by
+    the cumulative step count, mirroring how concatenate_results stitches frames
+    together. The boundary observation (step 0) of each subsequent segment is
+    dropped because it duplicates the previous segment's final state.
+    """
+    new_result = ReactionResult(results[0].initial_state, retain_history=False)
+
+    merged = ObservedResult(
+        observer=None, compress_freq=results[0].observed_results[0].compress_freq
+    )
+
+    step_offset = 0
+    for idx, res in enumerate(results):
+        obs = res.observed_results[0]
+        steps = obs.observation_steps
+        for step in steps:
+            if step == 0 and idx > 0:
+                continue
+            merged._observations[step_offset + step] = obs.observation_at(step)
+        step_offset += max(steps) if steps else 0
+
+    merged._total_steps = step_offset
+
+    new_result._observed_results = [merged]
+    new_result._live_state = results[-1].output.copy()
+    new_result._total_steps = step_offset
     return new_result

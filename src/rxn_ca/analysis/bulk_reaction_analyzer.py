@@ -26,11 +26,14 @@ class BulkReactionAnalyzer():
     @classmethod
     def from_result_doc_file(cls, fname: str) -> BulkReactionAnalyzer:
         doc: RxnCAResultDoc = RxnCAResultDoc.from_file(fname)
-        return cls(doc.results, doc.phases, doc.recipe.heating_schedule)
-    
+        return cls.from_result_doc(doc)
+
     @classmethod
     def from_result_doc(cls, doc: RxnCAResultDoc) -> BulkReactionAnalyzer:
-        return cls(doc.results, doc.phases, doc.recipe.heating_schedule)
+        # In analysis-only mode the doc carries lightweight ObservedResults
+        # instead of full ReactionResults.
+        results = doc.observed_results if doc.observed_results else doc.results
+        return cls(results, doc.phases, doc.recipe.heating_schedule)
     
     def __init__(self, results: Union[List[ReactionResult], List[ObservedResult]], phase_set: SolidPhaseSet, heating_sched: HeatingSchedule):
         """Initializes a ReactionResult with the reaction set used in the simulation

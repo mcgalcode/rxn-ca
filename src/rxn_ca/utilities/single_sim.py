@@ -23,7 +23,8 @@ def run_single_sim(recipe: ReactionRecipe,
                    phase_set: SolidPhaseSet = None,
                    existing_lib: ReactionLibrary = None,
                    compress_freq: int = None,
-                   num_frames: int = None) -> RxnCAResultDoc:
+                   num_frames: int = None,
+                   analysis_only: bool = False) -> RxnCAResultDoc:
     """Run a single simulation.
 
     Args:
@@ -39,6 +40,12 @@ def run_single_sim(recipe: ReactionRecipe,
             analysis. Cannot be combined with num_frames.
         num_frames: If set, store roughly this many full state snapshots over
             the run. Cannot be combined with compress_freq.
+        analysis_only: If True, do not retain full simulation states. Instead
+            record only the reduced per-phase-volume view (via a
+            PhaseVolumeObserver) at the compress_freq / num_frames cadence, and
+            store it under RxnCAResultDoc.observed_results. This is dramatically
+            lighter on memory and disk, but only volume-derived analyses are
+            available afterward (no per-site or reaction-choice analyses).
 
     Returns:
         RxnCAResultDoc with simulation results
@@ -107,15 +114,29 @@ def run_single_sim(recipe: ReactionRecipe,
         controller=controller,
         compress_freq=compress_freq,
         num_frames=num_frames,
+        analysis_only=analysis_only,
     )
 
-    result_doc = RxnCAResultDoc(
-        recipe=recipe,
-        results=[result],
-        reaction_library=reaction_lib,
-        phases=reaction_lib.phases,
-        final_simulation=Simulation(result.last_step, initial_simulation.structure)
-    )
+    # In analysis-only mode the heavy full result is discarded; only the
+    # lightweight per-phase-volume observations are persisted. The final state
+    # is still available from the retained live state.
+    final_simulation = Simulation(result.last_step, initial_simulation.structure)
+    if analysis_only:
+        result_doc = RxnCAResultDoc(
+            recipe=recipe,
+            observed_results=result.observed_results,
+            reaction_library=reaction_lib,
+            phases=reaction_lib.phases,
+            final_simulation=final_simulation,
+        )
+    else:
+        result_doc = RxnCAResultDoc(
+            recipe=recipe,
+            results=[result],
+            reaction_library=reaction_lib,
+            phases=reaction_lib.phases,
+            final_simulation=final_simulation,
+        )
 
     return result_doc
 
