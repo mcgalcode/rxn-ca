@@ -24,7 +24,8 @@ def run_single_sim(recipe: ReactionRecipe,
                    existing_lib: ReactionLibrary = None,
                    compress_freq: int = None,
                    num_frames: int = None,
-                   analysis_only: bool = False) -> RxnCAResultDoc:
+                   analysis_only: bool = False,
+                   reaction_lib_path: str = None) -> RxnCAResultDoc:
     """Run a single simulation.
 
     Args:
@@ -46,10 +47,17 @@ def run_single_sim(recipe: ReactionRecipe,
             store it under RxnCAResultDoc.observed_results. This is dramatically
             lighter on memory and disk, but only volume-derived analyses are
             available afterward (no per-site or reaction-choice analyses).
+        reaction_lib_path: If set, the result doc references the library at this
+            path instead of embedding it (the library is loaded lazily on
+            access). When reaction_lib is not provided, the library is loaded
+            from this path to run the simulation.
 
     Returns:
         RxnCAResultDoc with simulation results
     """
+    if reaction_lib is None and reaction_lib_path is not None:
+        reaction_lib = ReactionLibrary.from_file(reaction_lib_path)
+
     if base_reactions is None and reaction_lib is None:
         raise ValueError("Must provide either base_reactions or reaction_lib")
 
@@ -126,6 +134,7 @@ def run_single_sim(recipe: ReactionRecipe,
             recipe=recipe,
             observed_results=result.observed_results,
             reaction_library=reaction_lib,
+            reaction_library_path=reaction_lib_path,
             phases=reaction_lib.phases,
             final_simulation=final_simulation,
         )
@@ -134,6 +143,7 @@ def run_single_sim(recipe: ReactionRecipe,
             recipe=recipe,
             results=[result],
             reaction_library=reaction_lib,
+            reaction_library_path=reaction_lib_path,
             phases=reaction_lib.phases,
             final_simulation=final_simulation,
         )

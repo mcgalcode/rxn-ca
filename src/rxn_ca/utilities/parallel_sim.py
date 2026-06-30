@@ -46,7 +46,8 @@ def run_sim_parallel(recipe: ReactionRecipe,
                      existing_lib: ReactionLibrary = None,
                      compress_freq: int = None,
                      num_frames: int = None,
-                     analysis_only: bool = False):
+                     analysis_only: bool = False,
+                     reaction_lib_path: str = None):
     """Run simulation with multiple realizations in parallel.
 
     Args:
@@ -64,10 +65,17 @@ def run_sim_parallel(recipe: ReactionRecipe,
         analysis_only: If True, retain only the reduced per-phase-volume view of
             each realization (via a PhaseVolumeObserver) at the compress_freq /
             num_frames cadence, stored under RxnCAResultDoc.observed_results.
+        reaction_lib_path: If set, the result doc references the library at this
+            path instead of embedding it (the library is loaded lazily on
+            access). When reaction_lib is not provided, the library is loaded
+            from this path to run the simulation.
 
     Returns:
         RxnCAResultDoc with averaged results from all realizations
     """
+    if reaction_lib is None and reaction_lib_path is not None:
+        reaction_lib = ReactionLibrary.from_file(reaction_lib_path)
+
     if base_reactions is None and reaction_lib is None:
         raise ValueError("Must provide either base_reactions or reaction_lib")
 
@@ -123,6 +131,7 @@ def run_sim_parallel(recipe: ReactionRecipe,
             recipe=recipe,
             observed_results=good_results,
             reaction_library=reaction_lib,
+            reaction_library_path=reaction_lib_path,
             phases=reaction_lib.phases,
             final_simulation=final_simulations[-1]
         )
@@ -131,6 +140,7 @@ def run_sim_parallel(recipe: ReactionRecipe,
             recipe=recipe,
             results=good_results,
             reaction_library=reaction_lib,
+            reaction_library_path=reaction_lib_path,
             phases=reaction_lib.phases,
             final_simulation=final_simulations[-1]
         )
