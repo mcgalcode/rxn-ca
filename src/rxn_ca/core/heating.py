@@ -75,7 +75,7 @@ class HeatingSchedule(MSONable):
             tallied += step.duration
             if tallied > step_idx:
                 return step.temperature
-    
+
     def temp_at_percent_complete(self, percent_complete):
         total_steps = sum([step.duration for step in self.steps])
         step_idx = int(percent_complete * total_steps)

@@ -2,9 +2,10 @@ import numpy as np
 import pytest
 
 from rxn_ca.analysis import PhaseVolumeObserver, ReactionStepAnalyzer
+from rxn_ca.analysis.phase_volume_observer import VOLUMES
 from rxn_ca.analysis.reaction_step_analyzer import phase_volumes_for_state
 from rxn_ca.phases import SolidPhaseSet
-from rxn_ca.core.constants import GASES_EVOLVED, VOL_MULTIPLIER, VOLUME
+from rxn_ca.core.constants import GASES_EVOLVED, TEMPERATURE, VOL_MULTIPLIER, VOLUME
 
 from pylattica.core import SimulationState
 from pylattica.discrete.state_constants import DISCRETE_OCCUPANCY
@@ -53,23 +54,32 @@ def test_observer_matches_analyzer_single_state(phase_set, half_and_half_sim_ste
     analyzer.set_step_group(half_and_half_sim_step)
     expected = analyzer.get_all_absolute_phase_volumes()
 
-    assert observed == expected
-    assert observed[NA_CL] == 10
-    assert observed[LI2_O] == 10
+    assert observed[VOLUMES] == expected
+    assert observed[VOLUMES][NA_CL] == 10
+    assert observed[VOLUMES][LI2_O] == 10
 
 
 def test_observer_includes_evolved_gases(sim_step_with_gas):
     observer = PhaseVolumeObserver()
     observed = observer.observe(sim_step_with_gas, 0)
 
-    assert observed[NA_CL] == 10
-    assert observed[CO2] == 3.0
+    assert observed[VOLUMES][NA_CL] == 10
+    assert observed[VOLUMES][CO2] == 3.0
+
+
+def test_observer_captures_temperature(half_and_half_sim_step):
+    half_and_half_sim_step.set_general_state({TEMPERATURE: 1234})
+    observed = PhaseVolumeObserver().observe(half_and_half_sim_step, 0)
+    # The observation carries the temperature recorded in the state so
+    # analysis-only runs retain the true per-frame temperature.
+    assert observed[TEMPERATURE] == 1234
 
 
 def test_observer_delegates_to_shared_helper(half_and_half_sim_step):
-    # The observer must be the same single source of truth as the analyzer.
+    # The observer's volumes must be the same single source of truth as the
+    # analyzer.
     observer = PhaseVolumeObserver()
-    assert observer.observe(half_and_half_sim_step, 0) == phase_volumes_for_state(
+    assert observer.observe(half_and_half_sim_step, 0)[VOLUMES] == phase_volumes_for_state(
         half_and_half_sim_step
     )
 
@@ -78,7 +88,7 @@ def test_precomputed_volumes_derive_same_quantities(phase_set, half_and_half_sim
     """Derived quantities from precomputed volumes match the full-state path."""
     full = ReactionStepAnalyzer(phase_set).set_step_group(half_and_half_sim_step)
 
-    volumes = PhaseVolumeObserver().observe(half_and_half_sim_step, 0)
+    volumes = PhaseVolumeObserver().observe(half_and_half_sim_step, 0)[VOLUMES]
     reduced = ReactionStepAnalyzer(phase_set).set_precomputed_volumes(volumes)
 
     assert reduced.get_all_absolute_phase_volumes() == full.get_all_absolute_phase_volumes()

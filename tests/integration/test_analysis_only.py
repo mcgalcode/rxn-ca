@@ -66,6 +66,22 @@ def test_analysis_only_serialization_roundtrip(recipe, rxn_lib, tmp_path):
     assert len(analyzer.get_volume_trace()) == len(analyzer.loaded_step_idxs)
 
 
+def test_analysis_only_retains_temperature_from_state(recipe, rxn_lib):
+    result_doc = run_single_sim(
+        recipe, reaction_lib=rxn_lib, analysis_only=True, num_frames=5
+    )
+
+    analyzer = BulkReactionAnalyzer.from_result_doc(result_doc)
+
+    schedule_temps = set(recipe.heating_schedule.all_temps)
+    temps = [analyzer.get_temperature_at(i) for i in analyzer.loaded_step_idxs]
+
+    # Every observed frame carries the temperature captured from the state, and
+    # each value is one the heating schedule actually visited.
+    assert all(t is not None for t in temps)
+    assert set(temps) <= schedule_temps
+
+
 def test_parallel_sim_analysis_only(recipe, rxn_lib):
     result_doc = run_sim_parallel(
         recipe, reaction_lib=rxn_lib, analysis_only=True, num_frames=5

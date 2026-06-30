@@ -156,12 +156,12 @@ def react():
             print(f"Referencing reaction library by path: {reaction_library_filename}")
 
         if args.analysis_only:
-            analysis_fpath = output_file.split(".")[0] + "_analysis.json"
+            analysis_fpath = os.path.splitext(output_file)[0] + "_analysis.json"
             print(f"Saving analysis-only results to {analysis_fpath}")
             result_doc.to_file(analysis_fpath)
         elif use_live_compress:
             # With live_compress, result is already compressed - just save it
-            compressed_fpath = output_file.split(".")[0] + "_compressed.json"
+            compressed_fpath = os.path.splitext(output_file)[0] + "_compressed.json"
             print(f"Saving compressed results to {compressed_fpath}")
             result_doc.to_file(compressed_fpath)
         else:

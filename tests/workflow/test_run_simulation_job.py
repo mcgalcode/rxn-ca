@@ -63,6 +63,10 @@ def test_run_simulation_analysis_only(recipe, library_data, tmp_path):
     # Analyzed trajectories are still produced from the observed volumes.
     assert len(out.final_molar_amounts) > 0
     assert len(out.step_indices) > 0
+    # Temperatures come from the recorded state (no None gaps) and align with
+    # the step indices.
+    assert len(out.temperature_trajectory) == len(out.step_indices)
+    assert all(t is not None for t in out.temperature_trajectory)
 
 
 def test_run_simulation_result_doc_references_library_not_embeds(

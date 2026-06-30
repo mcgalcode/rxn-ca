@@ -3,8 +3,10 @@ from __future__ import annotations
 from ..phases.solid_phase_set import SolidPhaseSet
 from ..core.reaction_result import ReactionResult
 from ..core.heating import HeatingSchedule
+from ..core.constants import TEMPERATURE
 from ..phases.gasses import DEFAULT_GASES
 from .reaction_step_analyzer import ReactionStepAnalyzer
+from .phase_volume_observer import VOLUMES
 
 from ..computing.schemas.ca_result_schema import RxnCAResultDoc
 
@@ -83,11 +85,27 @@ class BulkReactionAnalyzer():
         return self._step_groups
       
     def get_analyzer(self, step_group):
-        # In analysis-only mode a "step group" is precomputed per-phase volumes
-        # (one dict per result); otherwise it is full simulation states.
+        # In analysis-only mode a "step group" is a list of structured
+        # observations ({VOLUMES, TEMPERATURE}); feed the analyzer just the
+        # per-phase volumes. Otherwise it is full simulation states.
         if self._analysis_only:
-            return self.step_analyzer.set_precomputed_volumes(step_group)
+            volumes = [obs[VOLUMES] for obs in step_group]
+            return self.step_analyzer.set_precomputed_volumes(volumes)
         return self.step_analyzer.set_step_group(step_group)
+
+    def get_temperature_at(self, step_no):
+        """Temperature active at ``step_no``, read from the recorded state.
+
+        Uses the temperature stored in the simulation state during the run
+        (heating_schedule_runner sets it in the general state each heating
+        step), rather than recomputing it from the heating schedule. In
+        analysis-only mode it is read from the per-frame observation captured
+        by PhaseVolumeObserver.
+        """
+        if self._analysis_only:
+            return self.results[0].observation_at(step_no).get(TEMPERATURE)
+        state = self.results[0].get_step(step_no)
+        return state.get_general_state().get(TEMPERATURE)
 
     def analyze_step(self, step_number):
         return self.get_analyzer(self.get_steps(step_number))

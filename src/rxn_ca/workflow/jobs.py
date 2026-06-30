@@ -248,7 +248,7 @@ def run_simulation(
             if phase not in molar_trajectory:
                 molar_trajectory[phase] = []
             molar_trajectory[phase].append(amount)
-        temp_trajectory.append(recipe.heating_schedule.temp_at(step_idx))
+        temp_trajectory.append(analyzer.get_temperature_at(step_idx))
 
     return SimulationOutput(
         final_molar_amounts=final_molar_amounts,
