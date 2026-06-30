@@ -17,6 +17,9 @@ def create_simulation_flow(
     exclude_theoretical: bool = True,
     save_to_file: bool = True,
     metadata: Dict[str, Any] = None,
+    compress_freq: int = 100,
+    num_frames: int = None,
+    analysis_only: bool = False,
     name: str = "rxn_ca_simulation",
 ) -> Flow:
     """Create a flow that sets up a reaction library and runs a simulation.
@@ -36,6 +39,10 @@ def create_simulation_flow(
         exclude_theoretical: Whether to exclude theoretical phases
         save_to_file: If True, save reaction library and results to files
         metadata: Optional metadata to attach to the simulation output
+        compress_freq: Frame/observation cadence (see run_simulation).
+        num_frames: Store roughly this many snapshots (see run_simulation).
+        analysis_only: If True, retain only the reduced per-phase-volume view
+            of each frame, producing a much smaller result doc.
         name: Name for the flow
 
     Returns:
@@ -89,6 +96,9 @@ def create_simulation_flow(
         reaction_library_data=setup_job.output,
         save_to_file=save_to_file,
         metadata=metadata,
+        compress_freq=compress_freq,
+        num_frames=num_frames,
+        analysis_only=analysis_only,
     )
     sim_job.name = f"simulate_{chemical_system}"
 
@@ -104,6 +114,9 @@ def create_multi_simulation_flow(
     exclude_theoretical: bool = True,
     save_to_file: bool = True,
     metadata_list: List[Dict[str, Any]] = None,
+    compress_freq: int = 100,
+    num_frames: int = None,
+    analysis_only: bool = False,
     name: str = "rxn_ca_multi_simulation",
 ) -> Flow:
     """Create a flow for multiple simulations sharing a reaction library.
@@ -122,6 +135,10 @@ def create_multi_simulation_flow(
         exclude_theoretical: Whether to exclude theoretical phases
         save_to_file: If True, save reaction library and results to files
         metadata_list: Optional list of metadata dicts, one per recipe
+        compress_freq: Frame/observation cadence (see run_simulation).
+        num_frames: Store roughly this many snapshots (see run_simulation).
+        analysis_only: If True, retain only the reduced per-phase-volume view
+            of each frame, producing much smaller result docs.
         name: Name for the flow
 
     Returns:
@@ -167,6 +184,9 @@ def create_multi_simulation_flow(
             reaction_library_data=setup_job.output,
             save_to_file=save_to_file,
             metadata=metadata,
+            compress_freq=compress_freq,
+            num_frames=num_frames,
+            analysis_only=analysis_only,
         )
         sim_job.name = f"simulate_{i}"
         jobs.append(sim_job)

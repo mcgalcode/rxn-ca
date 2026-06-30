@@ -141,6 +141,7 @@ def run_simulation(
     metadata: Dict[str, Any] = None,
     compress_freq: int = 100,
     num_frames: int = None,
+    analysis_only: bool = False,
 ) -> SimulationOutput:
     """Run an rxn-ca simulation.
 
@@ -158,8 +159,12 @@ def run_simulation(
         metadata: Optional user-provided metadata for tagging/provenance
         compress_freq: If set, store a full state snapshot every compress_freq
             steps instead of per-step diffs. Cannot be combined with num_frames.
+            In analysis_only mode this sets the observation cadence instead.
         num_frames: If set, store roughly this many full state snapshots over
             the run. Cannot be combined with compress_freq.
+        analysis_only: If True, retain only the reduced per-phase-volume view of
+            each frame (via a PhaseVolumeObserver). The saved result doc is much
+            smaller, but only volume-derived analyses are available afterward.
 
     Returns:
         SimulationOutput with analyzed results and file references
@@ -189,7 +194,11 @@ def run_simulation(
         chem_sys = chemical_system
         reaction_library_path = None
 
-    # Run simulation
+    # Reference the library by path (when one exists) so the saved result doc
+    # does not embed the full library.
+    if num_frames is not None:
+        compress_freq = None
+
     if recipe.num_realizations > 1:
         result_doc = run_sim_parallel(
             recipe=recipe,
@@ -197,6 +206,8 @@ def run_simulation(
             phase_set=phase_set,
             compress_freq=compress_freq,
             num_frames=num_frames,
+            analysis_only=analysis_only,
+            reaction_lib_path=reaction_library_path,
         )
     else:
         result_doc = run_single_sim(
@@ -205,6 +216,8 @@ def run_simulation(
             phase_set=phase_set,
             compress_freq=compress_freq,
             num_frames=num_frames,
+            analysis_only=analysis_only,
+            reaction_lib_path=reaction_library_path,
         )
 
     # Optionally save result doc to file

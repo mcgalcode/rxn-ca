@@ -28,6 +28,14 @@ def react():
     parser.add_argument('-p', '--output-dir')
     parser.add_argument('--no-compress', action='store_true',
                         help='Disable live compression (keeps all frames)')
+    parser.add_argument('--num-frames', type=int, default=None,
+                        help='Store roughly this many snapshots over the run '
+                             '(sets the frame/observation cadence). Mutually '
+                             'exclusive with the default compress_freq.')
+    parser.add_argument('--analysis-only', action='store_true',
+                        help='Retain only the reduced per-phase-volume view of '
+                             'each frame (no full states). Much smaller on disk, '
+                             'but only volume-derived analyses are available.')
     parser.add_argument('--count-reactions', action='store_true',
                         help='Assemble reaction choice metadata (requires --no-compress)')
     parser.add_argument('-l', '--reaction-library-file')
@@ -42,6 +50,17 @@ def react():
         print("Error: --count-reactions requires --no-compress.")
         print("       Live compression (enabled by default) only stores frames at intervals,")
         print("       losing most REACTION_CHOSEN values needed for --count-reactions.")
+        sys.exit(1)
+
+    if args.analysis_only and args.count_reactions:
+        print("Error: --analysis-only cannot be combined with --count-reactions.")
+        print("       Reaction-choice metadata requires full per-step states, which")
+        print("       analysis-only mode does not retain.")
+        sys.exit(1)
+
+    if args.analysis_only and args.no_compress:
+        print("Error: --analysis-only cannot be combined with --no-compress.")
+        print("       --no-compress retains every full frame; --analysis-only retains none.")
         sys.exit(1)
 
     output_file_arg = args.output_file
@@ -99,42 +118,31 @@ def react():
         # Live compression is enabled by default; --no-compress disables it
         use_live_compress = not args.no_compress
 
-        if args.single:
-            if use_live_compress:
-                result_doc = run_single_sim(
-                    recipe,
-                    base_reactions=reaction_set,
-                    reaction_lib=rxn_lib,
-                    initial_simulation=initial_simulation,
-                    phase_set=phases,
-                    compress_freq=500,
-                )
-            else:
-                result_doc = run_single_sim(
-                    recipe,
-                    base_reactions=reaction_set,
-                    reaction_lib=rxn_lib,
-                    initial_simulation=initial_simulation,
-                    phase_set=phases,
-                )
-        else:
-            if use_live_compress:
-                result_doc = run_sim_parallel(
-                    recipe,
-                    base_reactions=reaction_set,
-                    reaction_lib=rxn_lib,
-                    initial_simulation=initial_simulation,
-                    phase_set=phases,
-                    compress_freq=500,
-                )
-            else:
-                result_doc = run_sim_parallel(
-                    recipe,
-                    base_reactions=reaction_set,
-                    reaction_lib=rxn_lib,
-                    initial_simulation=initial_simulation,
-                    phase_set=phases,
-                )
+        # Determine the frame / observation cadence. An explicit --num-frames
+        # wins; otherwise a default compress_freq is used whenever frames are
+        # being retained (live compression or analysis-only observation).
+        num_frames = args.num_frames
+        compress_freq = None
+        if num_frames is None and (use_live_compress or args.analysis_only):
+            compress_freq = 500
+
+        # When not embedding the library, reference it by its file path so it is
+        # omitted from the artifact but still lazily recoverable.
+        reaction_lib_path = None if store_lib else reaction_library_filename
+
+        runner = run_single_sim if args.single else run_sim_parallel
+
+        result_doc = runner(
+            recipe,
+            base_reactions=reaction_set,
+            reaction_lib=rxn_lib,
+            initial_simulation=initial_simulation,
+            phase_set=phases,
+            compress_freq=compress_freq,
+            num_frames=num_frames,
+            analysis_only=args.analysis_only,
+            reaction_lib_path=reaction_lib_path,
+        )
 
         if args.count_reactions:
             print("Assembling metadata from results...")
@@ -142,11 +150,16 @@ def react():
 
         print(f'================= SAVING RESULTS to {output_file} =================')
 
-        if not store_lib:
-            print("Discarding reaction library...")
-            result_doc.reaction_library = None
+        if store_lib:
+            print("Embedding reaction library in result doc...")
+        else:
+            print(f"Referencing reaction library by path: {reaction_library_filename}")
 
-        if use_live_compress:
+        if args.analysis_only:
+            analysis_fpath = output_file.split(".")[0] + "_analysis.json"
+            print(f"Saving analysis-only results to {analysis_fpath}")
+            result_doc.to_file(analysis_fpath)
+        elif use_live_compress:
             # With live_compress, result is already compressed - just save it
             compressed_fpath = output_file.split(".")[0] + "_compressed.json"
             print(f"Saving compressed results to {compressed_fpath}")
