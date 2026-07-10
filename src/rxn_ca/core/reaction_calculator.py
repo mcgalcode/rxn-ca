@@ -87,28 +87,41 @@ class ReactionCalculator():
             if not self.should_reaction_proceed(selected_reaction, site_species, site_vol):
                 continue
 
-            product_phase  = self.get_product_from_reaction(selected_reaction)
-            product_volume = selected_reaction.convert_reactant_amt_to_product_amt(site_species, site_vol, product_phase)
+            # Gas evolution is deterministic and atomic with cell consumption: every
+            # consumed cell credits the stoichiometric share of each gaseous product
+            # to the global ledger. Together with the solid replacement below, this
+            # conserves elemental mass exactly per event, regardless of the cell's
+            # future fate (competing reactions, temperature changes, end of run).
+            if len(selected_reaction.gas_products) > 0:
+                gas_amts = updates[GENERAL].get(GASES_EVOLVED)
+                if gas_amts is None:
+                    # NOTE: get_general_state returns a deepcopy, so this dict is
+                    # safe to mutate
+                    gas_amts = prev_state.get_general_state().get(GASES_EVOLVED, {})
 
-            # If it's a gaseous product, do some accounting to maintain mass balance
-            # then replace the phase with empty space
-            if self.rxn_set.phases.is_gas(product_phase):
-                gas_amts = prev_state.get_general_state().get(GASES_EVOLVED)
-                if product_phase in gas_amts:
-                    gas_amts[product_phase] = gas_amts[product_phase] + product_volume
-                else:
-                    gas_amts[product_phase] = product_volume
+                for gas_phase in selected_reaction.gas_products:
+                    evolved = selected_reaction.gas_amt_from_reactant_vol(gas_phase, site_vol)
+                    gas_amts[gas_phase] = gas_amts.get(gas_phase, 0) + evolved
 
                 updates[GENERAL][GASES_EVOLVED] = gas_amts
-            
-            # Otherwise, if there is a selected product it must be solid, so just replace
-            # the old phase with the new one and the updated volume
-            elif product_phase is not None:
+
+            # The consumed cell is replaced by one of the solid products. If the
+            # reaction produces no solids at all, the cell volatilizes completely,
+            # leaving behind free space.
+            product_phase = self.get_product_from_reaction(selected_reaction)
+
+            if product_phase is None:
+                updates[SITES][site_id] = {
+                    DISCRETE_OCCUPANCY: SolidPhaseSet.FREE_SPACE,
+                    VOLUME: 1.0
+                }
+            else:
+                product_volume = selected_reaction.convert_reactant_amt_to_product_amt(site_species, site_vol, product_phase)
                 updates[SITES][site_id] = {
                     DISCRETE_OCCUPANCY: product_phase,
                     VOLUME: product_volume
                 }
-            
+
         return updates
 
     def possible_interactions_at_site(self, site_one_id: int, state: SimulationState):
@@ -210,16 +223,36 @@ class ReactionCalculator():
         ]
         return choose_from_list(interactions, scores)
     
-    def should_reaction_proceed(self, rxn: ScoredReaction, reactant_phase: str, reactant_vol: float) -> Dict:
+    def should_reaction_proceed(self, rxn: ScoredReaction, reactant_phase: str, reactant_vol: float) -> bool:
         stoich_fraction = rxn.solid_reactant_stoich_fraction(reactant_phase)
         # IMPORTANT: This division ensures that the likelihood of consuming a particular cell decreases with
         # the size of that cell - it should take twice as many "tries" to consume twice as much
         # volume
         adjusted = stoich_fraction / reactant_vol
+
+        # Gas evolution happens deterministically upon cell consumption (see
+        # get_state_update), so cells no longer survive gas-product draws. Scaling
+        # the proceed likelihood by the solid fraction of the product volume
+        # preserves the effective conversion kinetics of the previous scheme, in
+        # which a cell was only consumed when a solid product happened to be drawn.
+        # Reactions with no solid products at all are left unscaled (under the old
+        # scheme they degenerately never consumed their reactant cell).
+        if rxn.total_solid_product_stoich > 0:
+            adjusted = adjusted * rxn.solid_product_fraction
+
         return random.random() < adjusted
-    
-    def get_product_from_reaction(self, rxn: ScoredReaction) -> Dict:
-        products = list(rxn.products)
+
+    def get_product_from_reaction(self, rxn: ScoredReaction) -> str:
+        """Chooses the solid phase that will replace a consumed reactant cell,
+        weighted by stoichiometry. Gaseous products are never candidates - they
+        are credited deterministically to the GASES_EVOLVED ledger when a cell
+        is consumed (see get_state_update). Returns None if the reaction has no
+        solid products.
+        """
+        products = list(rxn.solid_products)
+        if len(products) == 0:
+            return None
+
         product_stoich_coeffs = np.array([rxn.product_stoich(p) for p in products])
         likelihoods: np.array = product_stoich_coeffs / product_stoich_coeffs.sum()
         new_phase_name = str(np.random.choice(products, p=likelihoods))

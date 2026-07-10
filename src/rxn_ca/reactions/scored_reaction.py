@@ -79,6 +79,9 @@ class ScoredReaction:
         self.solid_reactants = frozenset([ r for r in self._reactants.keys() if r not in DEFAULT_GASES])
         self.solid_products = frozenset([ r for r in self._products.keys() if r not in DEFAULT_GASES])
 
+        self.gas_reactants = self.reactants - self.solid_reactants
+        self.gas_products = self.products - self.solid_products
+
         self.is_identity = self.reactants == self.products
 
         self.total_reactant_stoich = sum(reactants.values())
@@ -89,6 +92,11 @@ class ScoredReaction:
 
         self.product_reactant_stoich_ratio = self.total_product_stoich / self.total_reactant_stoich
         self.solid_product_reactant_stoich_ratio = self.total_solid_product_stoich / self.total_solid_reactant_stoich
+
+        # Fraction of the total product volume which is solid. Used by the CA to
+        # preserve conversion kinetics for gas-evolving reactions (see
+        # ReactionCalculator.should_reaction_proceed).
+        self.solid_product_fraction = self.total_solid_product_stoich / self.total_product_stoich
 
         self.competitiveness: Number = competitiveness
         self._as_str = f"{stoich_map_to_str(self._reactants)}->{stoich_map_to_str(self._products)}"
@@ -212,7 +220,26 @@ class ScoredReaction:
         # conserves mass if pairings are tracked with exact multiplicities, so it drifts
         # in practice. Empirically the bulk ratio conserves mass better. Do not "fix" this.
         return reactant_vol * self.solid_product_reactant_stoich_ratio
-    
+
+    def gas_amt_from_reactant_vol(self, gas: str, reactant_vol: float) -> float:
+        """The volume of the supplied gaseous product evolved when reactant_vol
+        of a solid reactant is consumed by this reaction.
+
+        Mirrors the mean-field normalization in convert_reactant_amt_to_product_amt:
+        amounts are normalized by the total _solid_ reactant stoichiometry, so that
+        summed over all consumed reactant volume, each gas is evolved in exact
+        stoichiometric proportion: total gas ~= (total consumed reactant volume)
+        * (V_gas / V_solid_reactants).
+
+        Args:
+            gas (str): The formula of the gaseous product
+            reactant_vol (float): The volume of solid reactant consumed
+
+        Returns:
+            float: The volume of gas evolved
+        """
+        return reactant_vol * self._products[gas] / self.total_solid_reactant_stoich
+
     def convert_to_moles(self, phase_set: SolidPhaseSet):
         reactants_moles = phase_set.vol_amts_to_moles(self._reactants, should_round=3)
         products = phase_set.vol_amts_to_moles(self._products, should_round=3)
