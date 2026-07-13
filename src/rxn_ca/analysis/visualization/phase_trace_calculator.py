@@ -29,14 +29,20 @@ class PhaseTraceCalculator():
     was used in the simulation.
     """
         
-    def __init__(self, step_groups, analyzer: ReactionStepAnalyzer):
+    def __init__(self, step_groups, analyzer: ReactionStepAnalyzer, set_group_fn=None):
         """Initializes a ReactionResult with the reaction set used in the simulation
 
         Args:
             rxn_set (ScoredReactionSet):
+            set_group_fn: optional callable that loads a step group into an
+                analyzer and returns it. Defaults to the analyzer's
+                set_step_group (full simulation states); pass
+                BulkReactionAnalyzer.get_analyzer to also support
+                analysis-only observation groups.
         """
         self.step_analyzer = analyzer
         self._step_groups = step_groups
+        self._set_group = set_group_fn if set_group_fn is not None else analyzer.set_step_group
     
     def get_traces(self, step_analyses: Dict[str, float], config: PhaseTraceConfig) -> List[PhaseTrace]:
         if len(config.exact_phase_set) == 0:
@@ -62,7 +68,7 @@ class PhaseTraceCalculator():
                            quantity: AnalysisQuantity,
                            mode: AnalysisMode,
                            matter_phases: List[MatterPhase] = [MatterPhase.SOLID, MatterPhase.LIQUID]) -> List[PhaseTrace]:
-        analyses = [self.step_analyzer.set_step_group(sg).get_value_general(quantity, mode, include_matter_phases=matter_phases) for sg in self._step_groups]
+        analyses = [self._set_group(sg).get_value_general(quantity, mode, include_matter_phases=matter_phases) for sg in self._step_groups]
         return self.get_traces(analyses, trace_config)    
 
     def get_absolute_elemental_mole_traces(self, trace_config: PhaseTraceConfig) -> List[PhaseTrace]:

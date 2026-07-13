@@ -11,6 +11,12 @@ from ..phases import SolidPhaseSet
 from ..core.reaction_controller import ReactionController
 from ..core.liquid_swap_controller import LiquidSwapController
 from ..core.reaction_calculator import ReactionCalculator
+from ..core.pairwise_reaction_calculator import PairwiseReactionCalculator
+
+_UPDATE_SCHEMES = {
+    "independent": ReactionCalculator,
+    "pairwise": PairwiseReactionCalculator,
+}
 
 from .get_scored_rxns import get_scored_rxns
 from .setup_reaction import setup_reaction, setup_noise_reaction
@@ -103,7 +109,14 @@ def run_single_sim(recipe: ReactionRecipe,
 
     print(f'================= RUNNING SIMULATION =================')
 
-    rxn_calculator = ReactionCalculator(
+    calculator_class = _UPDATE_SCHEMES.get(recipe.update_scheme)
+    if calculator_class is None:
+        raise ValueError(
+            f"Unknown update_scheme {recipe.update_scheme!r}; "
+            f"expected one of {sorted(_UPDATE_SCHEMES)}"
+        )
+
+    rxn_calculator = calculator_class(
         LiquidSwapController.get_neighborhood_from_structure(initial_simulation.structure),
         atmospheric_species=recipe.atmospheric_phases
     )

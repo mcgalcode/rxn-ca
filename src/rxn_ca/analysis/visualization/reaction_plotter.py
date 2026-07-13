@@ -37,9 +37,13 @@ class ReactionPlotter():
         self.trace_calculator = PhaseTraceCalculator(
             bulk_analyzer.loaded_step_groups,
             bulk_analyzer.step_analyzer,
+            set_group_fn=bulk_analyzer.get_analyzer,
         )
         self.include_heating_trace = include_heating_trace
-        self.layout = RxnCALayout(self.bulk_analyzer.get_step_size(), self.bulk_analyzer.heating_schedule)
+        # Analysis-only results carry no full states, so the simulation size
+        # is unavailable; RxnCALayout does not currently use step_size.
+        step_size = None if bulk_analyzer._analysis_only else bulk_analyzer.get_step_size()
+        self.layout = RxnCALayout(step_size, self.bulk_analyzer.heating_schedule)
         self.rip_config = rip_config
         self.phase_colors = phase_colors
         self.focus_phases = focus_phases

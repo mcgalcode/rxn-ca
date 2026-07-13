@@ -43,6 +43,11 @@ class ReactionRecipe(MSONable):
     atmospheric_phases: List[str] = field(default_factory=list)
     packing_fraction: float = 1.0
     name: str = None
+    # Cell update scheme: "independent" (legacy per-site proceed draws) or
+    # "pairwise" (stoichiometric pair-consumption, see
+    # PairwiseReactionCalculator). Old serialized recipes load with the
+    # default.
+    update_scheme: str = "independent"
     
     def __post_init__(self):
         self.reactant_amounts = process_composition_dict(self.reactant_amounts)

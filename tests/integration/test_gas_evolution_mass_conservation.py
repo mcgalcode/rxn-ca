@@ -34,7 +34,8 @@ def carbonate_rxn_lib():
     return lib
 
 
-def test_gas_evolution_mass_conservation(carbonate_rxn_lib):
+@pytest.mark.parametrize("update_scheme", ["independent", "pairwise"])
+def test_gas_evolution_mass_conservation(carbonate_rxn_lib, update_scheme):
     recipe = ReactionRecipe(
         heating_schedule=HeatingSchedule.build(
             HeatingStep.hold(TEMP, duration=2),
@@ -42,6 +43,7 @@ def test_gas_evolution_mass_conservation(carbonate_rxn_lib):
         reactant_amounts={"BaCO3": 1.0},
         simulation_size=8,
         num_realizations=1,
+        update_scheme=update_scheme,
     )
 
     result_doc = run_single_sim(recipe, reaction_lib=carbonate_rxn_lib)
