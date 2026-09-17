@@ -20,6 +20,7 @@ def _build_reaction_library(
     ensure_phases: List[str] = None,
     metastability_cutoff: float = 0.1,
     exclude_theoretical: bool = True,
+    score_type: str = None,
 ) -> tuple:
     """Build phase set and reaction library for a chemical system.
 
@@ -29,6 +30,9 @@ def _build_reaction_library(
         ensure_phases: List of phase formulas that MUST be included
         metastability_cutoff: Energy above hull cutoff for phases
         exclude_theoretical: Whether to exclude theoretical phases
+        score_type: A ScoreTypes value (e.g. "TAMMAN_STRICT") selecting the
+            scorer used to score reactions. Defaults to get_scored_rxns'
+            default scorer (TammanScore).
 
     Returns:
         Tuple of (phase_set, reaction_lib)
@@ -62,13 +66,21 @@ def _build_reaction_library(
     # Compute reactions at all temperatures
     temp_rxn_mapping = rxn_set.compute_at_temperatures(temperatures)
 
-    # Score reactions
+    # Score reactions. score_type strings resolve through the same map the
+    # recipe uses (ScoreTypes is a str enum, so plain strings look up fine).
+    scorer_kwargs = {}
+    if score_type is not None:
+        from rxn_ca.core.recipe import _SCORE_TYPE_MAP
+
+        scorer_kwargs["scorer_class"] = _SCORE_TYPE_MAP[score_type]
+
     reaction_lib = get_scored_rxns(
         rxn_set,
         temps=temperatures,
         phase_set=phase_set,
         rxns_at_temps=temp_rxn_mapping,
         parallel=True,
+        **scorer_kwargs,
     )
 
     return phase_set, reaction_lib
@@ -82,6 +94,7 @@ def setup_reaction_library(
     metastability_cutoff: float = 0.1,
     exclude_theoretical: bool = True,
     save_to_file: bool = True,
+    score_type: str = None,
 ) -> ReactionLibraryData:
     """Set up phase set and reaction library for a chemical system.
 
@@ -99,6 +112,8 @@ def setup_reaction_library(
         metastability_cutoff: Energy above hull cutoff for phases
         exclude_theoretical: Whether to exclude theoretical phases
         save_to_file: If True, save reaction library to a JSON file
+        score_type: A ScoreTypes value (e.g. "TAMMAN_STRICT") selecting the
+            scorer used to score reactions. Defaults to TammanScore.
 
     Returns:
         ReactionLibraryData with phase set, reaction library, and metadata
@@ -109,6 +124,7 @@ def setup_reaction_library(
         ensure_phases,
         metastability_cutoff,
         exclude_theoretical,
+        score_type=score_type,
     )
 
     # Optionally save reaction library to file
@@ -205,7 +221,8 @@ def run_simulation(
             raise ValueError("chemical_system required when reaction_library_data not provided")
         all_temps = recipe.heating_schedule.all_temps
         phase_set, reaction_lib = _build_reaction_library(
-            chemical_system, all_temps, ensure_phases, metastability_cutoff
+            chemical_system, all_temps, ensure_phases, metastability_cutoff,
+            score_type=recipe.score_type,
         )
         chem_sys = chemical_system
         reaction_library_path = None

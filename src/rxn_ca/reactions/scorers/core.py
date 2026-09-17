@@ -37,6 +37,10 @@ def erf(x):
     return 0.5 * (1 + math.erf(-35 * (x + 0.03)))
 
 
+def erf_tight(x):
+    return 0.5 * (1 + math.erf(-35 * (x + 0.10)))
+
+
 class BasicScore(ABC):
     def __init__(self, phase_set: SolidPhaseSet, temp: Optional[int] = None):
         self.phases = phase_set
@@ -130,3 +134,36 @@ class TammanTightLinear(BasicScore):
 
         delta_g_adjustment = erf(rxn.energy_per_atom)
         return _score(self.temp / min_mp) * delta_g_adjustment
+
+
+class TammanStrict(BasicScore):
+    """TammanScore with the strict dG gate (erf_tight): positive-dG
+    reactions score ~0 instead of the normal TammanScore."""
+
+    def score(self, rxn: ComputedReaction):
+        phases = [c.reduced_formula for c in rxn.reactants]
+        non_gasses = [p for p in phases if p not in self.phases.gas_phases]
+        mps = [self.phases.get_melting_point(p) for p in non_gasses]
+        min_mp = min(mps)
+
+        delta_g_adjustment = erf_tight(rxn.energy_per_atom)
+        return tamman_score_softplus(self.temp / min_mp) * delta_g_adjustment
+
+
+class TammanHuttigStrict(BasicScore):
+    """TammanHuttigScoreErf with the strict dG gate (erf_tight):
+    positive-dG reactions score ~0, and single-solid-reactant reactions
+    use the Huttig temperature factor as in the default scorer."""
+    # https://en.wikipedia.org/wiki/Tammann_and_H%C3%BCttig_temperatures
+
+    def score(self, rxn: ComputedReaction):
+        phases = [c.reduced_formula for c in rxn.reactants]
+        non_gasses = [p for p in phases if p not in self.phases.gas_phases]
+        mps = [self.phases.get_melting_point(p) for p in non_gasses]
+        min_mp = min(mps)
+
+        delta_g_adjustment = erf_tight(rxn.energy_per_atom)
+
+        if len(non_gasses) == 1:
+            return huttig_score_softplus(self.temp / min_mp) * delta_g_adjustment
+        return tamman_score_softplus(self.temp / min_mp) * delta_g_adjustment

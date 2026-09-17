@@ -79,7 +79,8 @@ def create_simulation_flow(
     if temperatures is None:
         temperatures = recipe.heating_schedule.all_temps
 
-    # Create setup job
+    # Create setup job, scoring with the recipe's selected scorer (plain
+    # string for clean serialization; ScoreTypes is a str enum)
     setup_job = setup_reaction_library(
         chemical_system=chemical_system,
         temperatures=temperatures,
@@ -87,6 +88,7 @@ def create_simulation_flow(
         metastability_cutoff=metastability_cutoff,
         exclude_theoretical=exclude_theoretical,
         save_to_file=save_to_file,
+        score_type=getattr(recipe.score_type, "value", recipe.score_type),
     )
     setup_job.name = f"setup_{chemical_system}"
 
@@ -161,6 +163,17 @@ def create_multi_simulation_flow(
     if temperatures is None:
         temperatures = sorted(all_temps)
 
+    # All recipes share one scored library, so they must agree on the scorer
+    score_types = {
+        getattr(r.score_type, "value", r.score_type) for r in recipe_objects
+    }
+    if len(score_types) > 1:
+        raise ValueError(
+            f"Recipes disagree on score_type ({sorted(score_types)}); a shared "
+            "reaction library can only be scored one way. Use separate flows "
+            "or align the recipes."
+        )
+
     # Create setup job (shared across all simulations)
     setup_job = setup_reaction_library(
         chemical_system=chemical_system,
@@ -169,6 +182,7 @@ def create_multi_simulation_flow(
         metastability_cutoff=metastability_cutoff,
         exclude_theoretical=exclude_theoretical,
         save_to_file=save_to_file,
+        score_type=score_types.pop(),
     )
     setup_job.name = f"setup_{chemical_system}"
 
