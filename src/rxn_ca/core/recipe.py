@@ -16,7 +16,6 @@ class ScoreTypes(str, Enum):
     TAMMAN_HUTTIG_SOFTPLUS_GIBBS_SOFTPLUS = "TAMMAN_HUTTIG_SOFTPLUS_GIBBS_SOFTPLUS"
     TAMMAN_HUTTIG_EXP_GIBBS_SOFTPLUS = "TAMMAN_HUTTIG_EXP_GIBBS_SOFTPLUS"
     GIBBS_ERF_SCORE = "GIBBS_ERF_SCORE"
-    VIR_SCORER = "VIR_SCORER"
 
 
 _SCORE_TYPE_MAP = {
@@ -45,9 +44,8 @@ class ReactionRecipe(MSONable):
     name: str = None
     # Cell update scheme: "independent" (legacy per-site proceed draws) or
     # "pairwise" (stoichiometric pair-consumption, see
-    # PairwiseReactionCalculator). Old serialized recipes load with the
-    # default.
-    update_scheme: str = "independent"
+    # PairwiseReactionCalculator).
+    update_scheme: str = "pairwise"
     
     def __post_init__(self):
         self.reactant_amounts = process_composition_dict(self.reactant_amounts)
