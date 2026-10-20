@@ -33,7 +33,7 @@ dependencies = [
     "monty",
     "pydantic",
     "mp-api",
-    "pylattica>=0.1.4",
+    "pylattica",
     "pandas",
     "executing",
 ]
