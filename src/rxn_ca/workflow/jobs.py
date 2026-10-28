@@ -274,7 +274,7 @@ def run_simulation(
     ]
 
     trace_calc = PhaseTraceCalculator(
-        analyzer.loaded_step_groups, analyzer.step_analyzer
+        analyzer.loaded_step_groups, analyzer.step_analyzer, set_group_fn=analyzer.get_analyzer
     )
     molar_traces = trace_calc.get_general_traces(
         PhaseTraceConfig(minimum_required_prevalence=0.0),
