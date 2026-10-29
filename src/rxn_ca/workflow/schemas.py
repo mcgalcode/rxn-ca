@@ -8,8 +8,9 @@ from typing import Any, Dict, List, Optional
 class ReactionLibraryData:
     """Output from the setup_reaction_library job.
 
-    Contains the serialized phase set and reaction library, plus metadata.
-    The reaction library can optionally be saved to a file for large systems.
+    Contains the serialized phase set, plus metadata. A library saved to a file
+    is referenced by reaction_library_path and reaction_library_dict is empty;
+    otherwise the library is embedded in reaction_library_dict.
     """
 
     phase_set_dict: Dict[str, Any]
@@ -20,6 +21,10 @@ class ReactionLibraryData:
 
     # If the library was saved to a file, this is the path
     reaction_library_path: Optional[str] = None
+
+    # How the library was built: n_entries, n_reactions, the settings used and
+    # the Materials Project database version
+    metadata: Optional[Dict[str, Any]] = None
 
     def as_dict(self) -> Dict[str, Any]:
         d = asdict(self)
