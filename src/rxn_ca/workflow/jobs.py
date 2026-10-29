@@ -7,6 +7,7 @@ rxn-ca simulations in workflow frameworks.
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import json
+import os
 
 from jobflow import job
 from monty.json import MontyEncoder, MontyDecoder
@@ -20,6 +21,9 @@ def _build_reaction_library(
     ensure_phases: List[str] = None,
     metastability_cutoff: float = 0.1,
     exclude_theoretical: bool = True,
+    thermo_types: List[str] = None,
+    exclude_phases: List[str] = None,
+    scorer: str = None,
 ) -> tuple:
     """Build phase set and reaction library for a chemical system.
 
@@ -29,10 +33,19 @@ def _build_reaction_library(
         ensure_phases: List of phase formulas that MUST be included
         metastability_cutoff: Energy above hull cutoff for phases
         exclude_theoretical: Whether to exclude theoretical phases
+        thermo_types: Materials Project thermo types to fetch entries for,
+            e.g. ["R2SCAN"]. None uses get_entries' default.
+        exclude_phases: Phase formulas dropped from the Materials Project
+            entries before the hull is built (see get_entries)
+        scorer: A ScoreTypes value naming the scorer, e.g.
+            "TAMMAN_HUTTIG_SOFTPLUS_GIBBS_ERF". None uses get_scored_rxns'
+            default (TammanScore).
 
     Returns:
-        Tuple of (phase_set, reaction_lib)
+        Tuple of (phase_set, reaction_lib, stats), stats holding n_entries
+        and n_reactions
     """
+    from rxn_ca.core.recipe import ScoreTypes, _SCORE_TYPE_MAP
     from rxn_ca.utilities.get_entries import get_entries
     from rxn_ca.phases import SolidPhaseSet
     from rxn_ca.utilities.get_scored_rxns import get_scored_rxns
@@ -40,16 +53,23 @@ def _build_reaction_library(
     from rxn_network.enumerators.minimize import MinimizeGibbsEnumerator
     from rxn_network.enumerators.utils import run_enumerators
 
+    # Resolve the scorer first: an unknown name fails before the MP download
+    score_kwargs = {"scorer_class": _SCORE_TYPE_MAP[ScoreTypes(scorer)]} if scorer else {}
+
     # Get entries from Materials Project
     entries = get_entries(
         chem_sys=chemical_system,
         metastability_cutoff=metastability_cutoff,
         ensure_phases=ensure_phases or [],
         exclude_theoretical_phases=exclude_theoretical,
+        exclude_phases=exclude_phases or [],
+        **({"thermo_types": thermo_types} if thermo_types else {}),
     )
     print(f"Got {len(entries)} entries for {chemical_system}")
     if ensure_phases:
         print(f"  (ensured inclusion of: {ensure_phases})")
+    if exclude_phases:
+        print(f"  (excluded: {exclude_phases})")
 
     # Create phase set
     phase_set = SolidPhaseSet.from_entry_set(entries)
@@ -63,15 +83,27 @@ def _build_reaction_library(
     temp_rxn_mapping = rxn_set.compute_at_temperatures(temperatures)
 
     # Score reactions
-    reaction_lib = get_scored_rxns(
-        rxn_set,
-        temps=temperatures,
-        phase_set=phase_set,
-        rxns_at_temps=temp_rxn_mapping,
-        parallel=True,
-    )
+    score = dict(rxn_set=rxn_set, temps=temperatures, phase_set=phase_set,
+                 rxns_at_temps=temp_rxn_mapping, **score_kwargs)
+    try:
+        reaction_lib = get_scored_rxns(parallel=True, **score)
+    except Exception as exc:
+        # the parallel pool's workers can be killed mid-run (e.g. SIGTERM);
+        # scoring serially is slower but finishes
+        print(f"Parallel scoring failed ({exc!r}); retrying serially")
+        reaction_lib = get_scored_rxns(parallel=False, **score)
 
-    return phase_set, reaction_lib
+    return phase_set, reaction_lib, {"n_entries": len(entries), "n_reactions": len(rxn_set)}
+
+
+def _mp_database_version() -> Optional[str]:
+    """The Materials Project database version, for provenance (None if unavailable)."""
+    try:
+        from mp_api.client import MPRester
+        with MPRester() as mpr:
+            return mpr.db_version
+    except Exception:
+        return None
 
 
 @job
@@ -82,6 +114,10 @@ def setup_reaction_library(
     metastability_cutoff: float = 0.1,
     exclude_theoretical: bool = True,
     save_to_file: bool = True,
+    thermo_types: List[str] = None,
+    exclude_phases: List[str] = None,
+    scorer: str = None,
+    library_path: str = None,
 ) -> ReactionLibraryData:
     """Set up phase set and reaction library for a chemical system.
 
@@ -99,34 +135,68 @@ def setup_reaction_library(
         metastability_cutoff: Energy above hull cutoff for phases
         exclude_theoretical: Whether to exclude theoretical phases
         save_to_file: If True, save reaction library to a JSON file
+        thermo_types: Materials Project thermo types to fetch entries for,
+            e.g. ["R2SCAN"]. None uses get_entries' default (["GGA_GGA+U"]).
+        exclude_phases: Phase formulas dropped from the Materials Project
+            entries before the hull is built, e.g. a phase DFT places too low.
+            No reaction involves them and they set no other phase's energy
+            above hull. Unlike ReactionRecipe.exclude_phases, which drops
+            reactions from a built library at simulation time, the hull and
+            the enumerators never see the phase.
+        scorer: A ScoreTypes value naming the scorer class, e.g.
+            "TAMMAN_HUTTIG_SOFTPLUS_GIBBS_ERF". None uses get_scored_rxns'
+            default (TammanScore).
+        library_path: Where save_to_file writes the library. Default:
+            reaction_library_<chemical_system>.json in the working directory.
 
     Returns:
-        ReactionLibraryData with phase set, reaction library, and metadata
+        ReactionLibraryData with the phase set and metadata (entry and reaction
+        counts, the settings used, the MP database version). A saved library
+        is referenced by reaction_library_path, an absolute path, and
+        reaction_library_dict is left empty: a library can be hundreds of MB,
+        past a MongoDB job store's 16 MB document limit, and run_simulation
+        loads it from the path. With save_to_file=False it is embedded.
     """
-    phase_set, reaction_lib = _build_reaction_library(
+    phase_set, reaction_lib, stats = _build_reaction_library(
         chemical_system,
         temperatures,
         ensure_phases,
         metastability_cutoff,
         exclude_theoretical,
+        thermo_types=thermo_types,
+        exclude_phases=exclude_phases,
+        scorer=scorer,
     )
 
     # Optionally save reaction library to file
     reaction_library_path = None
     if save_to_file:
         filename = f"reaction_library_{chemical_system.replace('-', '_')}.json"
-        reaction_library_path = str(Path.cwd() / filename)
-        with open(reaction_library_path, "w") as f:
+        path = Path(library_path) if library_path else Path.cwd() / filename
+        partial = path.with_name(path.name + ".partial")  # never a half-written library
+        with open(partial, "w") as f:
             json.dump(reaction_lib.as_dict(), f, cls=MontyEncoder)
+        os.replace(partial, path)
+        reaction_library_path = str(path.resolve())
         print(f"Saved reaction library to {reaction_library_path}")
 
     return ReactionLibraryData(
         phase_set_dict=phase_set.as_dict(),
-        reaction_library_dict=reaction_lib.as_dict(),
+        reaction_library_dict={} if reaction_library_path else reaction_lib.as_dict(),
         chemical_system=chemical_system,
         temperatures=temperatures,
         phases_available=list(phase_set.phases),
         reaction_library_path=reaction_library_path,
+        metadata={
+            **stats,
+            "ensure_phases": ensure_phases or [],
+            "exclude_phases": exclude_phases or [],
+            "metastability_cutoff": metastability_cutoff,
+            "exclude_theoretical": exclude_theoretical,
+            "thermo_types": thermo_types,
+            "scorer": scorer,
+            "mp_database_version": _mp_database_version(),
+        },
     )
 
 
@@ -204,7 +274,7 @@ def run_simulation(
         if chemical_system is None:
             raise ValueError("chemical_system required when reaction_library_data not provided")
         all_temps = recipe.heating_schedule.all_temps
-        phase_set, reaction_lib = _build_reaction_library(
+        phase_set, reaction_lib, _ = _build_reaction_library(
             chemical_system, all_temps, ensure_phases, metastability_cutoff
         )
         chem_sys = chemical_system
@@ -269,8 +339,11 @@ def run_simulation(
     # matching the previous get_all_absolute_molar_amounts behaviour;
     # minimum_required_prevalence=0.0 keeps every phase that ever appears.
     step_indices: List[int] = list(analyzer.loaded_step_idxs)
+    # Temperatures as recorded in the run (full states or analysis-only
+    # observations), not recomputed from the schedule: temp_at() is None at
+    # the final frame, which sits one step past the schedule's end.
     temp_trajectory: List[float] = [
-        recipe.heating_schedule.temp_at(step_idx) for step_idx in step_indices
+        analyzer.get_temperature_at(step_idx) for step_idx in step_indices
     ]
 
     trace_calc = PhaseTraceCalculator(

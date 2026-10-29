@@ -15,6 +15,7 @@ def get_entries(chem_sys: str,
                 thermo_types: List[str] = ["GGA_GGA+U"],
                 filter_at_temperature: int = 300,
                 exclude_theoretical_phases: bool = False,
+                exclude_phases: List[str] = [],
                 **kwargs) -> GibbsEntrySet:
     # Note: custom entries should be retrieved from MP using the
     # additional_criteria={"thermo_types": ["GGA_GGA+U"]} option
@@ -24,8 +25,15 @@ def get_entries(chem_sys: str,
             elements=chem_sys,
             additional_criteria={"thermo_types": thermo_types},
         )
-        
-    all_entries = [*custom_entries, *mp_computed_struct_entries]
+
+    # exclude_phases are dropped (every entry of the formula) before the hull is
+    # built, as if Materials Project had none: a phase that DFT places too low
+    # no longer pushes other phases past the metastability cutoff. An excluded
+    # phase wins over ensure_phases.
+    drop = {Composition(f).reduced_formula for f in exclude_phases}
+    ensure_phases = [f for f in ensure_phases if Composition(f).reduced_formula not in drop]
+    all_entries = [e for e in [*custom_entries, *mp_computed_struct_entries]
+                   if e.composition.reduced_formula not in drop]
     entry_set = process_entries(
         all_entries,
         300, 
