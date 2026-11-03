@@ -17,7 +17,7 @@ def fn(temp):
     phase_set = _scoring_globals.get('phase_set')
     rxn_set  = _scoring_globals.get('base_rxns')
 
-    scorer = score_class(temp=temp, phase_set=phase_set)
+    scorer = score_class(temp=temp, phase_set=phase_set, **_scoring_globals.get('scorer_kwargs', {}))
     if _scoring_globals.get("rxns_at_tmps") is None:
         rset = rxn_set.set_new_temperature(temp)
     else:
@@ -78,9 +78,8 @@ def get_scored_rxns(rxn_set: ReactionSet,
         _scoring_globals['score_class'] = scorer_class
         _scoring_globals['phase_set'] = phase_set
         _scoring_globals['base_rxns'] = rxn_set
-
-        if rxns_at_temps is not None:
-            _scoring_globals['rxns_at_tmps'] = rxns_at_temps
+        _scoring_globals['scorer_kwargs'] = scorer_kwargs
+        _scoring_globals['rxns_at_tmps'] = rxns_at_temps  # None clears an earlier call's
 
         with mp.get_context('fork').Pool(mp.cpu_count()) as pool:
             results = pool.map(fn, temps_to_score)

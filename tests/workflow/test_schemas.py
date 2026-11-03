@@ -62,6 +62,35 @@ class TestReactionLibraryData:
 
         assert reconstructed.reaction_library_path is None
 
+    def test_round_trip_with_metadata(self):
+        """Test that metadata survives serialization."""
+        original = ReactionLibraryData(
+            phase_set_dict={},
+            reaction_library_dict={},
+            chemical_system="Fe-Si",
+            temperatures=[300],
+            phases_available=["Fe"],
+            reaction_library_path="/path/to/lib.json",
+            metadata={"n_entries": 3, "thermo_types": ["R2SCAN"]},
+        )
+
+        reconstructed = ReactionLibraryData.from_dict(original.as_dict())
+
+        assert reconstructed.metadata == {"n_entries": 3, "thermo_types": ["R2SCAN"]}
+
+    def test_from_dict_without_metadata(self):
+        """Test that a dict written before metadata existed still loads."""
+        d = {
+            "phase_set_dict": {},
+            "reaction_library_dict": {},
+            "chemical_system": "Fe-Si",
+            "temperatures": [300],
+            "phases_available": ["Fe"],
+            "reaction_library_path": None,
+        }
+
+        assert ReactionLibraryData.from_dict(d).metadata is None
+
     def test_jsanitize_compatibility(self):
         """Test that schema works with monty's jsanitize (used by jobflow)."""
         data = ReactionLibraryData(

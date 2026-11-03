@@ -21,6 +21,7 @@ def create_simulation_flow(
     num_frames: int = None,
     analysis_only: bool = False,
     name: str = "rxn_ca_simulation",
+    setup_reaction_library_kwargs: Dict[str, Any] = None,
 ) -> Flow:
     """Create a flow that sets up a reaction library and runs a simulation.
 
@@ -44,6 +45,9 @@ def create_simulation_flow(
         analysis_only: If True, retain only the reduced per-phase-volume view
             of each frame, producing a much smaller result doc.
         name: Name for the flow
+        setup_reaction_library_kwargs: Further setup_reaction_library options, e.g.
+            {"thermo_types": ["R2SCAN"], "exclude_phases": ["BaO2"],
+             "scorer": "GIBBS_ERF_SCORE"}
 
     Returns:
         Flow with setup and simulation jobs, outputting SimulationOutput
@@ -87,6 +91,7 @@ def create_simulation_flow(
         metastability_cutoff=metastability_cutoff,
         exclude_theoretical=exclude_theoretical,
         save_to_file=save_to_file,
+        **(setup_reaction_library_kwargs or {}),
     )
     setup_job.name = f"setup_{chemical_system}"
 
@@ -118,6 +123,7 @@ def create_multi_simulation_flow(
     num_frames: int = None,
     analysis_only: bool = False,
     name: str = "rxn_ca_multi_simulation",
+    setup_reaction_library_kwargs: Dict[str, Any] = None,
 ) -> Flow:
     """Create a flow for multiple simulations sharing a reaction library.
 
@@ -140,6 +146,9 @@ def create_multi_simulation_flow(
         analysis_only: If True, retain only the reduced per-phase-volume view
             of each frame, producing much smaller result docs.
         name: Name for the flow
+        setup_reaction_library_kwargs: Further setup_reaction_library options, e.g.
+            {"thermo_types": ["R2SCAN"], "exclude_phases": ["BaO2"],
+             "scorer": "GIBBS_ERF_SCORE"}
 
     Returns:
         Flow with one setup job and multiple simulation jobs,
@@ -169,6 +178,7 @@ def create_multi_simulation_flow(
         metastability_cutoff=metastability_cutoff,
         exclude_theoretical=exclude_theoretical,
         save_to_file=save_to_file,
+        **(setup_reaction_library_kwargs or {}),
     )
     setup_job.name = f"setup_{chemical_system}"
 

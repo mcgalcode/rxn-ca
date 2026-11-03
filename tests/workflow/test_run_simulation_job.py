@@ -67,6 +67,8 @@ def test_run_simulation_analysis_only(recipe, library_data, tmp_path):
     # the step indices.
     assert len(out.temperature_trajectory) == len(out.step_indices)
     assert all(t is not None for t in out.temperature_trajectory)
+    # one value per step for every phase, absent phases 0-filled (6041bc8)
+    assert all(len(t) == len(out.step_indices) for t in out.molar_amounts_trajectory.values())
 
 
 def test_run_simulation_result_doc_references_library_not_embeds(

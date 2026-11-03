@@ -39,18 +39,18 @@ class TestSearchSpace:
         assert len(ss.parameters) == 1
         param = ss.parameters[0]
         assert param.name == "hold_time"
-        assert isinstance(param, ContinuousParameter)
+        assert isinstance(param, DiscreteParameter)
         assert param.low == 1
         assert param.high == 10
 
-    def test_add_ramp_rate_range(self):
-        """Ramp rate creates a continuous parameter."""
-        ss = SearchSpace().add_ramp_rate_range(5.0, 20.0)
+    def test_add_ramp_step_time_range(self):
+        """Ramp step time creates a continuous parameter."""
+        ss = SearchSpace().add_ramp_step_time_range(5, 20)
 
         assert len(ss.parameters) == 1
         param = ss.parameters[0]
-        assert param.name == "ramp_rate"
-        assert isinstance(param, ContinuousParameter)
+        assert param.name == "ramp_step_time"
+        assert isinstance(param, DiscreteParameter)
         assert param.low == 5.0
         assert param.high == 20.0
 
@@ -82,7 +82,7 @@ class TestSearchSpace:
             SearchSpace()
             .add_temperature_range(800, 1400, step=50)
             .add_hold_time_range(1, 15)
-            .add_ramp_rate_range(5.0, 20.0)
+            .add_ramp_step_time_range(5, 20)
             .add_precursor_slot("Ba_source", ["BaCO3", "BaO"])
             .add_precursor_ratio("Ba_source", 0.4, 0.6)
         )
@@ -91,7 +91,7 @@ class TestSearchSpace:
         param_names = [p.name for p in ss.parameters]
         assert "hold_temp" in param_names
         assert "hold_time" in param_names
-        assert "ramp_rate" in param_names
+        assert "ramp_step_time" in param_names
         assert "Ba_source" in param_names
         assert "Ba_source_ratio" in param_names
 
