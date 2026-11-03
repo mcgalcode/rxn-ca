@@ -2,6 +2,7 @@ from rxn_network.entries.entry_set import GibbsEntrySet
 from rxn_network.entries.utils import process_entries
 from mp_api.client import MPRester
 from pymatgen.core import Composition
+from pymatgen.entries.computed_entries import ComputedStructureEntry
 from rxn_ca.phases import SolidPhaseSet
 from rxn_ca.phases.utils import remove_phases_from_entry_set, remove_theoretical_phases
 
@@ -19,6 +20,11 @@ def get_entries(chem_sys: str,
                 **kwargs) -> GibbsEntrySet:
     # Note: custom entries should be retrieved from MP using the
     # additional_criteria={"thermo_types": ["GGA_GGA+U"]} option
+    # process_entries builds each Gibbs entry from the entry's structure, so a
+    # plain ComputedEntry would fail there, after the download
+    for e in custom_entries:
+        if not isinstance(e, ComputedStructureEntry):
+            raise TypeError(f"custom_entries must be ComputedStructureEntry objects, got {type(e).__name__}")
     # First we enumerate entries
     with MPRester() as mpr:
         mp_computed_struct_entries = mpr.get_entries_in_chemsys(

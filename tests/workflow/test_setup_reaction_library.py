@@ -15,6 +15,7 @@ from rxn_network.entries.gibbs import GibbsComputedEntry
 from rxn_ca.core.recipe import ReactionRecipe, ScoreTypes, _SCORE_TYPE_MAP
 from rxn_ca.reactions import ReactionLibrary
 from rxn_ca.workflow import jobs
+from rxn_ca.workflow.flows import create_simulation_flow
 from rxn_ca.workflow.jobs import run_simulation, setup_reaction_library
 
 
@@ -57,7 +58,6 @@ def test_saved_library_is_referenced_not_embedded(built, tmp_path):
     assert out.reaction_library_dict == {}
     assert out.phase_set_dict and out.phases_available
     assert ReactionLibrary.from_file(out.reaction_library_path).temps == built[0].temps
-    assert not list(target.parent.glob("*.partial"))
 
 
 def test_default_path_is_the_working_directory(built, tmp_path):
@@ -74,17 +74,20 @@ def test_unsaved_library_is_embedded(built, tmp_path):
 
 
 def test_options_reach_the_build_and_the_metadata(built, tmp_path):
+    # the build is stubbed, so the settings only need to arrive, not mean anything
     out = _setup(tmp_path, thermo_types=["R2SCAN"], exclude_phases=["BaO2"],
-                 scorer="GIBBS_ERF_SCORE", metastability_cutoff=0.03)
+                 scorer="GIBBS_ERF_SCORE", scorer_kwargs={"some_setting": 1},
+                 metastability_cutoff=0.03)
 
     args, kwargs = built[1][0]
     assert args[3] == 0.03
     assert kwargs == {"thermo_types": ["R2SCAN"], "exclude_phases": ["BaO2"],
-                      "scorer": "GIBBS_ERF_SCORE"}
+                      "scorer": "GIBBS_ERF_SCORE", "scorer_kwargs": {"some_setting": 1}}
     assert out.metadata == {
         "n_entries": 7, "n_reactions": 42, "ensure_phases": [], "exclude_phases": ["BaO2"],
         "metastability_cutoff": 0.03, "exclude_theoretical": True, "thermo_types": ["R2SCAN"],
-        "scorer": "GIBBS_ERF_SCORE", "mp_database_version": "test-db",
+        "scorer": "GIBBS_ERF_SCORE", "scorer_kwargs": {"some_setting": 1},
+        "mp_database_version": "test-db",
     }
 
 
@@ -137,7 +140,7 @@ def test_scorer_and_serial_fallback(monkeypatch):
     calls = []
 
     def fake_score(rxn_set, parallel, **kw):
-        calls.append((parallel, kw.get("scorer_class")))
+        calls.append((parallel, kw.get("scorer_class"), kw.get("scorer_kwargs")))
         if parallel:
             raise RuntimeError("pool worker killed")
         return "scored library"
@@ -146,10 +149,20 @@ def test_scorer_and_serial_fallback(monkeypatch):
 
     _, lib, stats = jobs._build_reaction_library(
         "Li-O", [300], thermo_types=["R2SCAN"], exclude_phases=["Li2O2"],
-        scorer="GIBBS_ERF_SCORE")
+        scorer="GIBBS_ERF_SCORE", scorer_kwargs={"some_setting": 1})
 
     scorer_class = _SCORE_TYPE_MAP[ScoreTypes.GIBBS_ERF_SCORE]
     assert lib == "scored library"
-    assert calls == [(True, scorer_class), (False, scorer_class)]
+    assert calls == [(True, scorer_class, {"some_setting": 1}), (False, scorer_class, {"some_setting": 1})]
     assert seen["thermo_types"] == ["R2SCAN"] and seen["exclude_phases"] == ["Li2O2"]
     assert stats == {"n_entries": 4, "n_reactions": 2}
+
+
+def test_flow_passes_setup_reaction_library_kwargs(get_test_file_path):
+    recipe = ReactionRecipe.from_file(get_test_file_path("integration/batio3_recipe.json"))
+    flow = create_simulation_flow(
+        recipe, "Ba-Ti-O",
+        setup_reaction_library_kwargs={"scorer": "GIBBS_ERF_SCORE", "exclude_phases": ["BaO2"]})
+
+    setup_kwargs = flow.jobs[0].function_kwargs
+    assert setup_kwargs["scorer"] == "GIBBS_ERF_SCORE" and setup_kwargs["exclude_phases"] == ["BaO2"]

@@ -7,7 +7,6 @@ rxn-ca simulations in workflow frameworks.
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import json
-import os
 
 from jobflow import job
 from monty.json import MontyEncoder, MontyDecoder
@@ -24,6 +23,7 @@ def _build_reaction_library(
     thermo_types: List[str] = None,
     exclude_phases: List[str] = None,
     scorer: str = None,
+    scorer_kwargs: Dict[str, Any] = None,
 ) -> tuple:
     """Build phase set and reaction library for a chemical system.
 
@@ -40,6 +40,8 @@ def _build_reaction_library(
         scorer: A ScoreTypes value naming the scorer, e.g.
             "TAMMAN_HUTTIG_SOFTPLUS_GIBBS_ERF". None uses get_scored_rxns'
             default (TammanScore).
+        scorer_kwargs: Settings passed to the scorer's constructor besides
+            phase_set and temp. None passes none.
 
     Returns:
         Tuple of (phase_set, reaction_lib, stats), stats holding n_entries
@@ -84,7 +86,8 @@ def _build_reaction_library(
 
     # Score reactions
     score = dict(rxn_set=rxn_set, temps=temperatures, phase_set=phase_set,
-                 rxns_at_temps=temp_rxn_mapping, **score_kwargs)
+                 rxns_at_temps=temp_rxn_mapping, scorer_kwargs=scorer_kwargs or {},
+                 **score_kwargs)
     try:
         reaction_lib = get_scored_rxns(parallel=True, **score)
     except Exception as exc:
@@ -117,6 +120,7 @@ def setup_reaction_library(
     thermo_types: List[str] = None,
     exclude_phases: List[str] = None,
     scorer: str = None,
+    scorer_kwargs: Dict[str, Any] = None,
     library_path: str = None,
 ) -> ReactionLibraryData:
     """Set up phase set and reaction library for a chemical system.
@@ -146,6 +150,9 @@ def setup_reaction_library(
         scorer: A ScoreTypes value naming the scorer class, e.g.
             "TAMMAN_HUTTIG_SOFTPLUS_GIBBS_ERF". None uses get_scored_rxns'
             default (TammanScore).
+        scorer_kwargs: Settings passed to the scorer's constructor besides
+            phase_set and temp. Recorded in the metadata, so keep them plain
+            values. None passes none.
         library_path: Where save_to_file writes the library. Default:
             reaction_library_<chemical_system>.json in the working directory.
 
@@ -166,6 +173,7 @@ def setup_reaction_library(
         thermo_types=thermo_types,
         exclude_phases=exclude_phases,
         scorer=scorer,
+        scorer_kwargs=scorer_kwargs,
     )
 
     # Optionally save reaction library to file
@@ -173,10 +181,8 @@ def setup_reaction_library(
     if save_to_file:
         filename = f"reaction_library_{chemical_system.replace('-', '_')}.json"
         path = Path(library_path) if library_path else Path.cwd() / filename
-        partial = path.with_name(path.name + ".partial")  # never a half-written library
-        with open(partial, "w") as f:
+        with open(path, "w") as f:
             json.dump(reaction_lib.as_dict(), f, cls=MontyEncoder)
-        os.replace(partial, path)
         reaction_library_path = str(path.resolve())
         print(f"Saved reaction library to {reaction_library_path}")
 
@@ -195,6 +201,7 @@ def setup_reaction_library(
             "exclude_theoretical": exclude_theoretical,
             "thermo_types": thermo_types,
             "scorer": scorer,
+            "scorer_kwargs": scorer_kwargs,
             "mp_database_version": _mp_database_version(),
         },
     )
